@@ -1,0 +1,116 @@
+﻿cargo :     Checking 
+frence v0.1.0 (C:\Users
+\pc-rutra\Desktop\dev\r
+ust\frence)
+Au caractère Ligne:1 : 
+1
++ cargo check 2>&1 | 
+Out-File -Encoding 
+utf8 error2_utf8.log
++ ~~~~~~~~~~~~~~~~
+    + CategoryInfo     
+         : NotSpecifi  
+  ed: (    Checking    
+ fr...ev\rust\frenc    
+e):String) [], Rem    
+oteException
+    + FullyQualifiedEr 
+   rorId : NativeComm  
+  andError
+ 
+error[E0599]: no 
+function or associated 
+item named 
+`from_white` found for 
+struct `Color32` in 
+the current scope
+   --> 
+src\main.rs:394:71
+    |
+394 | ...              
+     .color(egui::Color
+32::from_white())
+    |                  
+                       
+    ^^^^^^^^^^ 
+function or associated 
+item not found in 
+`Color32`
+    |
+note: if you're trying 
+to build a new 
+`Color32` consider 
+using one of the 
+following associated 
+functions:
+      Color32::from_rgb
+      Color32::from_rgb
+_additive
+      Color32::from_rgb
+a_premultiplied
+      Color32::from_rgb
+a_unmultiplied
+      and 5 others
+   --> C:\Users\pc-rutr
+a\.cargo\registry\src\i
+ndex.crates.io-1949cf8c
+6b5b557f\ecolor-0.29.1\
+src\color32.rs:86:5
+    |
+86  |     pub const fn 
+from_rgb(r: u8, g: u8, 
+b: u8) -> Self {
+    |     ^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^
+...
+91  |     pub const fn 
+from_rgb_additive(r: 
+u8, g: u8, b: u8) -> 
+Self {
+    |     ^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^
+...
+97  |     pub const fn 
+from_rgba_premultiplied
+(r: u8, g: u8, b: u8, 
+a: u8) -> Self {
+    |     ^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^
+...
+103 |     pub fn from_r
+gba_unmultiplied(r: 
+u8, g: u8, b: u8, a: 
+u8) -> Self {
+    |     ^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^
+help: there is an 
+associated function 
+`from_white_alpha` 
+with a similar name
+   --> C:\Users\pc-rutr
+a\.cargo\registry\src\i
+ndex.crates.io-1949cf8c
+6b5b557f\ecolor-0.29.1\
+src\color32.rs:140:5
+    |
+140 |     pub fn 
+from_white_alpha(a: 
+u8) -> Self {
+    |     ^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^
+^^
+
+For more information 
+about this error, try 
+`rustc --explain 
+E0599`.
+error: could not 
+compile `frence` (bin 
+"frence") due to 1 
+previous error

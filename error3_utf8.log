@@ -1,0 +1,144 @@
+﻿cargo :     Checking 
+frence v0.1.0 (C:\Users
+\pc-rutra\Desktop\dev\r
+ust\frence)
+Au caractère Ligne:1 : 
+1
++ cargo check 2>&1 | 
+Out-File -Encoding 
+utf8 error3_utf8.log
++ ~~~~~~~~~~~~~~~~
+    + CategoryInfo     
+         : NotSpecifi  
+  ed: (    Checking    
+ fr...ev\rust\frenc    
+e):String) [], Rem    
+oteException
+    + FullyQualifiedEr 
+   rorId : NativeComm  
+  andError
+ 
+error[E0433]: failed 
+to resolve: could not 
+find `HICON` in 
+`Foundation`
+   --> 
+src\win_icon.rs:168:55
+    |
+168 |         let mut 
+hicons = [windows::Win3
+2::Foundation::HICON::d
+efault(); 1];
+    |                  
+                       
+              ^^^^^ 
+could not find `HICON` 
+in `Foundation`
+
+error[E0308]: 
+mismatched types
+   --> 
+src\win_icon.rs:176:18
+    |
+176 |             
+Some(&mut iconids),
+    |             ---- 
+^^^^^^^^^^^^ expected 
+`*mut u32`, found 
+`&mut [u32; 1]`
+    |             |
+    |             
+arguments to this enum 
+variant are incorrect
+    |
+    = note:    
+expected raw pointer 
+`*mut u32`
+            found 
+mutable reference 
+`&mut [u32; 1]`
+help: the type 
+constructed contains 
+`&mut [u32; 1]` due to 
+the type of the 
+argument passed
+   --> 
+src\win_icon.rs:176:13
+    |
+176 |             
+Some(&mut iconids),
+    |             
+^^^^^------------^
+    |                  
+|
+    |                  
+this argument 
+influences the type of 
+`Some`
+note: tuple variant 
+defined here
+   --> C:\Users\pc-rutr
+a\.rustup\toolchains\st
+able-x86_64-pc-windows-
+msvc\lib/rustlib/src/ru
+st\library\core\src\opt
+ion.rs:597:5
+    |
+597 |     
+Some(#[stable(feature 
+= "rust1", since = 
+"1.0.0")] T),
+    |     ^^^^
+
+error[E0308]: 
+mismatched types
+    --> 
+src\win_icon.rs:171:13
+     |
+170  |         let res 
+= PrivateExtractIconsW(
+     |                 
+  -------------------- 
+arguments to this 
+function are incorrect
+171  |             wind
+ows::core::PCWSTR(wide.
+as_ptr()),
+     |             ^^^^
+^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^ expected 
+`&[u16; 260]`, found 
+`PCWSTR`
+     |
+note: function defined 
+here
+    --> C:\Users\pc-rut
+ra\.cargo\registry\src\
+index.crates.io-1949cf8
+c6b5b557f\windows-0.58.
+0\src\Windows\Win32\UI\
+WindowsAndMessaging\mod
+.rs:2472:15
+     |
+2472 | pub unsafe fn Pr
+ivateExtractIconsW(szfi
+lename: &[u16; 260], 
+niconindex: i32, 
+cxicon: i32, cyicon: 
+i32, phicon: 
+Option<&mut [HICON]>, 
+pico...
+     |               
+^^^^^^^^^^^^^^^^^^^^
+
+Some errors have 
+detailed explanations: 
+E0308, E0433.
+For more information 
+about an error, try 
+`rustc --explain 
+E0308`.
+error: could not 
+compile `frence` (bin 
+"frence") due to 3 
+previous errors

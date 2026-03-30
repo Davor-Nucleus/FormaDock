@@ -17,3 +17,5 @@ windows = { version = "0.58", features = [
     "Win32_System_Com",
     "Win32_Storage_FileSystem",
 ] }
+tray-icon = "0.21.3"
+muda = "0.17.1"

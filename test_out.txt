@@ -1,9 +1,0 @@
-Checking "C:\\Users\\pc-rutra\\Desktop\\dev\\rust\\frence\\test_icon.ico"
-PrivateExtractIconsW res: 1
-valid hicon? true
-hicon_to_color_image? true
-Extract: true
-Shell: false
-SHGetFileInfo: true
-Got image! size: [128, 128]
-All transparent: false

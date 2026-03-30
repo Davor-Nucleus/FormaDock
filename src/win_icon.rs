@@ -4,21 +4,18 @@ use std::path::Path;
 
 use egui::ColorImage;
 use windows::core::{Interface, PCWSTR};
-use windows::Win32::Graphics::Gdi::{
-    CreateCompatibleBitmap, CreateCompatibleDC, DeleteDC, DeleteObject, GetDC, GetDIBits,
-    ReleaseDC, SelectObject, BITMAPINFO, BITMAPINFOHEADER, BI_RGB, DIB_RGB_COLORS, HGDIOBJ,
-};
+use windows::Win32::Graphics::Gdi::{DeleteObject, HGDIOBJ};
 use windows::Win32::Storage::FileSystem::FILE_FLAGS_AND_ATTRIBUTES;
 use windows::Win32::UI::Shell::{
-    IShellItem, IShellItemImageFactory, SHCreateItemFromParsingName, SHFILEINFOW, SHGFI_FLAGS,
-    SHGFI_ADDOVERLAYS, SHGFI_ICON, SHGFI_SHELLICONSIZE, SHGFI_SMALLICON, SHGetFileInfoW,
+    IShellItem, IShellItemImageFactory, SHCreateItemFromParsingName, SHGetFileInfoW, SHFILEINFOW,
+    SHGFI_ADDOVERLAYS, SHGFI_FLAGS, SHGFI_ICON, SHGFI_SHELLICONSIZE, SHGFI_SMALLICON,
     SIIGBF_BIGGERSIZEOK, SIIGBF_ICONONLY, SIIGBF_SCALEUP,
 };
 use windows::Win32::UI::WindowsAndMessaging::{DestroyIcon, HICON};
 
 fn wide_null_path(path: &Path) -> Vec<u16> {
     use std::os::windows::ffi::OsStrExt;
-    
+
     let path_str = path.to_string_lossy();
     let cleaned = if path_str.starts_with(r"\\?\UNC\") {
         format!(r"\\{}", &path_str[8..])
@@ -27,21 +24,29 @@ fn wide_null_path(path: &Path) -> Vec<u16> {
     } else {
         path_str.into_owned()
     };
-    
+
     std::ffi::OsStr::new(&cleaned)
         .encode_wide()
         .chain(std::iter::once(0))
         .collect()
 }
 
-unsafe fn get_dib_bits(hbmp: windows::Win32::Graphics::Gdi::HBITMAP) -> Option<(u32, u32, Vec<u8>)> {
-    use windows::Win32::Graphics::Gdi::{GetObjectW, BITMAP, GetDC, ReleaseDC, BITMAPINFO, BITMAPINFOHEADER, BI_RGB, GetDIBits, DIB_RGB_COLORS};
+unsafe fn get_dib_bits(
+    hbmp: windows::Win32::Graphics::Gdi::HBITMAP,
+) -> Option<(u32, u32, Vec<u8>)> {
+    use windows::Win32::Graphics::Gdi::{
+        GetDC, GetDIBits, GetObjectW, ReleaseDC, BITMAP, BITMAPINFO, BITMAPINFOHEADER, BI_RGB,
+        DIB_RGB_COLORS,
+    };
     let mut bm: BITMAP = std::mem::zeroed();
     if GetObjectW(
         windows::Win32::Graphics::Gdi::HGDIOBJ(hbmp.0),
         std::mem::size_of::<BITMAP>() as i32,
         Some(std::ptr::addr_of_mut!(bm).cast()),
-    ) == 0 || bm.bmWidth <= 0 || bm.bmHeight == 0 {
+    ) == 0
+        || bm.bmWidth <= 0
+        || bm.bmHeight == 0
+    {
         return None;
     }
 
@@ -49,7 +54,9 @@ unsafe fn get_dib_bits(hbmp: windows::Win32::Graphics::Gdi::HBITMAP) -> Option<(
     let h = bm.bmHeight.abs() as u32;
 
     let hdc = GetDC(None);
-    if hdc.is_invalid() { return None; }
+    if hdc.is_invalid() {
+        return None;
+    }
 
     let mut bi = BITMAPINFO {
         bmiHeader: BITMAPINFOHEADER {
@@ -65,7 +72,16 @@ unsafe fn get_dib_bits(hbmp: windows::Win32::Graphics::Gdi::HBITMAP) -> Option<(
     };
 
     let mut pixels: Vec<u8> = vec![0; (w * h * 4) as usize];
-    if GetDIBits(hdc, hbmp, 0, h, Some(pixels.as_mut_ptr().cast()), &mut bi, DIB_RGB_COLORS) == 0 {
+    if GetDIBits(
+        hdc,
+        hbmp,
+        0,
+        h,
+        Some(pixels.as_mut_ptr().cast()),
+        &mut bi,
+        DIB_RGB_COLORS,
+    ) == 0
+    {
         let _ = ReleaseDC(None, hdc);
         return None;
     }
@@ -73,13 +89,18 @@ unsafe fn get_dib_bits(hbmp: windows::Win32::Graphics::Gdi::HBITMAP) -> Option<(
     Some((w, h, pixels))
 }
 
-unsafe fn hbitmap_to_color_image(hbmp: windows::Win32::Graphics::Gdi::HBITMAP) -> Option<ColorImage> {
+unsafe fn hbitmap_to_color_image(
+    hbmp: windows::Win32::Graphics::Gdi::HBITMAP,
+) -> Option<ColorImage> {
     hbitmap_to_color_image_with_mask(hbmp, windows::Win32::Graphics::Gdi::HBITMAP::default())
 }
 
-unsafe fn hbitmap_to_color_image_with_mask(hbmp: windows::Win32::Graphics::Gdi::HBITMAP, hmask: windows::Win32::Graphics::Gdi::HBITMAP) -> Option<ColorImage> {
+unsafe fn hbitmap_to_color_image_with_mask(
+    hbmp: windows::Win32::Graphics::Gdi::HBITMAP,
+    hmask: windows::Win32::Graphics::Gdi::HBITMAP,
+) -> Option<ColorImage> {
     let (w, h, mut pixels) = get_dib_bits(hbmp)?;
-    
+
     // Check if image actually uses the alpha channel
     let mut has_alpha = false;
     for i in (0..pixels.len()).step_by(4) {
@@ -120,24 +141,33 @@ unsafe fn hbitmap_to_color_image_with_mask(hbmp: windows::Win32::Graphics::Gdi::
             pixels[i + 3], // A
         ]);
     }
-    Some(ColorImage::from_rgba_unmultiplied([w as usize, h as usize], &rgba))
+    Some(ColorImage::from_rgba_unmultiplied(
+        [w as usize, h as usize],
+        &rgba,
+    ))
 }
 
-unsafe fn hicon_to_color_image(icon: windows::Win32::UI::WindowsAndMessaging::HICON, _size: i32) -> Option<ColorImage> {
-    use windows::Win32::UI::WindowsAndMessaging::{GetIconInfo, ICONINFO};
+unsafe fn hicon_to_color_image(
+    icon: windows::Win32::UI::WindowsAndMessaging::HICON,
+    _size: i32,
+) -> Option<ColorImage> {
     use windows::Win32::Graphics::Gdi::{DeleteObject, HGDIOBJ};
+    use windows::Win32::UI::WindowsAndMessaging::{GetIconInfo, ICONINFO};
     let mut info: ICONINFO = std::mem::zeroed();
     if GetIconInfo(icon, &mut info).is_ok() {
         let mut img = None;
         if !info.hbmColor.is_invalid() {
             img = hbitmap_to_color_image_with_mask(info.hbmColor, info.hbmMask);
         } else if !info.hbmMask.is_invalid() {
-            img = hbitmap_to_color_image_with_mask(info.hbmMask, windows::Win32::Graphics::Gdi::HBITMAP::default());
+            img = hbitmap_to_color_image_with_mask(
+                info.hbmMask,
+                windows::Win32::Graphics::Gdi::HBITMAP::default(),
+            );
         }
-        
+
         let _ = DeleteObject(HGDIOBJ(info.hbmColor.0));
         let _ = DeleteObject(HGDIOBJ(info.hbmMask.0));
-        
+
         return img;
     }
     None
@@ -152,7 +182,10 @@ pub fn shell_icon_for_path(path: &Path, size_px: i32) -> Option<ColorImage> {
 
         let hbmp = factory
             .GetImage(
-                windows::Win32::Foundation::SIZE { cx: size_px, cy: size_px },
+                windows::Win32::Foundation::SIZE {
+                    cx: size_px,
+                    cy: size_px,
+                },
                 SIIGBF_ICONONLY | SIIGBF_BIGGERSIZEOK | SIIGBF_SCALEUP,
             )
             .ok()?;
@@ -189,7 +222,9 @@ pub fn shgetfile_icon(path: &Path, size_px: i32) -> Option<ColorImage> {
     }
 }
 
-use windows::Win32::System::Com::{CoInitialize, CoUninitialize, CoCreateInstance, CLSCTX_INPROC_SERVER, IPersistFile, STGM};
+use windows::Win32::System::Com::{
+    CoCreateInstance, CoInitialize, CoUninitialize, IPersistFile, CLSCTX_INPROC_SERVER, STGM,
+};
 use windows::Win32::UI::Shell::{IShellLinkW, ShellLink};
 use windows::Win32::UI::WindowsAndMessaging::PrivateExtractIconsW;
 
@@ -199,10 +234,10 @@ pub fn extract_icon_file(path: &Path, size_px: i32) -> Option<ColorImage> {
         let mut path_arr = [0u16; 260];
         let len = wide.len().min(260);
         path_arr[..len].copy_from_slice(&wide[..len]);
-        
+
         let mut hicons = [HICON::default(); 1];
         let mut iconids = [0u32; 1];
-        
+
         let res = PrivateExtractIconsW(
             &path_arr,
             0,
@@ -212,7 +247,7 @@ pub fn extract_icon_file(path: &Path, size_px: i32) -> Option<ColorImage> {
             Some(iconids.as_mut_ptr()),
             0,
         );
-        
+
         let hicon = hicons[0];
         if res > 0 && !hicon.is_invalid() {
             let img = hicon_to_color_image(hicon, size_px);
@@ -230,13 +265,21 @@ pub fn resolve_lnk_icon(path: &Path) -> Option<std::path::PathBuf> {
         if let Ok(sl) = CoCreateInstance::<_, IShellLinkW>(&ShellLink, None, CLSCTX_INPROC_SERVER) {
             if let Ok(pf) = sl.cast::<IPersistFile>() {
                 let wide = wide_null_path(path);
-                if pf.Load(windows::core::PCWSTR(wide.as_ptr()), STGM::default()).is_ok() {
+                if pf
+                    .Load(windows::core::PCWSTR(wide.as_ptr()), STGM::default())
+                    .is_ok()
+                {
                     let mut icon_path = [0u16; 1024];
                     let mut icon_index = 0i32;
                     if sl.GetIconLocation(&mut icon_path, &mut icon_index).is_ok() {
-                        let len = icon_path.iter().position(|&c| c == 0).unwrap_or(icon_path.len());
+                        let len = icon_path
+                            .iter()
+                            .position(|&c| c == 0)
+                            .unwrap_or(icon_path.len());
                         if len > 0 {
-                            let pb = std::path::PathBuf::from(String::from_utf16_lossy(&icon_path[..len]));
+                            let pb = std::path::PathBuf::from(String::from_utf16_lossy(
+                                &icon_path[..len],
+                            ));
                             if pb.exists() {
                                 result = Some(pb);
                             }
@@ -246,9 +289,14 @@ pub fn resolve_lnk_icon(path: &Path) -> Option<std::path::PathBuf> {
                         let mut target_path = [0u16; 1024];
                         let mut pfd = std::mem::zeroed();
                         if sl.GetPath(&mut target_path, &mut pfd, 0).is_ok() {
-                            let len = target_path.iter().position(|&c| c == 0).unwrap_or(target_path.len());
+                            let len = target_path
+                                .iter()
+                                .position(|&c| c == 0)
+                                .unwrap_or(target_path.len());
                             if len > 0 {
-                                let pb = std::path::PathBuf::from(String::from_utf16_lossy(&target_path[..len]));
+                                let pb = std::path::PathBuf::from(String::from_utf16_lossy(
+                                    &target_path[..len],
+                                ));
                                 if pb.exists() {
                                     result = Some(pb);
                                 }
@@ -264,7 +312,12 @@ pub fn resolve_lnk_icon(path: &Path) -> Option<std::path::PathBuf> {
 }
 
 pub fn icon_for_path(path: &Path, size_px: i32) -> Option<ColorImage> {
-    if path.extension().and_then(|s| s.to_str()).unwrap_or("").eq_ignore_ascii_case("url") {
+    if path
+        .extension()
+        .and_then(|s| s.to_str())
+        .unwrap_or("")
+        .eq_ignore_ascii_case("url")
+    {
         if let Ok(bytes) = std::fs::read(path) {
             let content = String::from_utf8_lossy(&bytes);
             for line in content.lines() {
@@ -275,28 +328,35 @@ pub fn icon_for_path(path: &Path, size_px: i32) -> Option<ColorImage> {
                     if let Some(img) = extract_icon_file(&icon_path_buf, size_px) {
                         return Some(img);
                     }
-                    if let Some(img) = shell_icon_for_path(&icon_path_buf, size_px).or_else(|| shgetfile_icon(&icon_path_buf, size_px)) {
+                    if let Some(img) = shell_icon_for_path(&icon_path_buf, size_px)
+                        .or_else(|| shgetfile_icon(&icon_path_buf, size_px))
+                    {
                         return Some(img);
                     }
                 }
             }
         }
     }
-    
-    if path.extension().and_then(|s| s.to_str()).unwrap_or("").eq_ignore_ascii_case("lnk") {
+
+    if path
+        .extension()
+        .and_then(|s| s.to_str())
+        .unwrap_or("")
+        .eq_ignore_ascii_case("lnk")
+    {
         if let Some(icon_path_buf) = resolve_lnk_icon(path) {
             if let Some(img) = extract_icon_file(&icon_path_buf, size_px) {
                 return Some(img);
             }
-            if let Some(img) = shell_icon_for_path(&icon_path_buf, size_px).or_else(|| shgetfile_icon(&icon_path_buf, size_px)) {
+            if let Some(img) = shell_icon_for_path(&icon_path_buf, size_px)
+                .or_else(|| shgetfile_icon(&icon_path_buf, size_px))
+            {
                 return Some(img);
             }
         }
     }
-    
+
     extract_icon_file(path, size_px)
         .or_else(|| shell_icon_for_path(path, size_px))
         .or_else(|| shgetfile_icon(path, size_px))
 }
-
-

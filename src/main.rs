@@ -1,3 +1,5 @@
+#![windows_subsystem = "windows"]
+
 mod win_icon;
 
 use std::collections::{HashMap, HashSet};
@@ -63,10 +65,159 @@ struct ZoneApp {
     /// Taille d’affichage des icônes (px).
     icon_display_px: f32,
     failed_icons: HashSet<PathBuf>,
+    /// Filtre de recherche (nom de fichier/dossier).
+    query: String,
+    /// Configuration globale (pour l’opacité, etc.).
+    config: AppConfig,
+    /// Taille tex (px) utilisée pour les `textures`; permet d'invalider si le slider change.
+    last_tex_sz: i32,
+}
+
+#[derive(Clone)]
+struct AppConfig {
+    window_width: f32,
+    window_height: f32,
+    window_min_width: f32,
+    window_min_height: f32,
+    transparent: bool,
+    decorations: bool,
+    icon_size_px: f32,
+    /// Opacité globale de l’UI (0–100).
+    opacity_percent: u8,
+    /// Couleur de fond (RGB).
+    bg_rgb: [u8; 3],
+    /// Rayon des coins (px).
+    corner_radius: f32,
+}
+
+impl AppConfig {
+    fn parse_rgb(s: &str) -> Option<[u8; 3]> {
+        let t = s.trim();
+        if let Some(hex) = t.strip_prefix('#') {
+            if hex.len() == 6 {
+                let r = u8::from_str_radix(&hex[0..2], 16).ok()?;
+                let g = u8::from_str_radix(&hex[2..4], 16).ok()?;
+                let b = u8::from_str_radix(&hex[4..6], 16).ok()?;
+                return Some([r, g, b]);
+            }
+        }
+
+        // fallback "R,G,B"
+        let parts: Vec<_> = t.split(',').map(|p| p.trim()).collect();
+        if parts.len() == 3 {
+            let r = parts[0].parse::<u8>().ok()?;
+            let g = parts[1].parse::<u8>().ok()?;
+            let b = parts[2].parse::<u8>().ok()?;
+            return Some([r, g, b]);
+        }
+        None
+    }
+
+    fn load() -> Self {
+        let default = Self {
+            window_width: 440.0,
+            window_height: 560.0,
+            window_min_width: 320.0,
+            window_min_height: 280.0,
+            transparent: true,
+            decorations: false,
+            icon_size_px: 118.0,
+            opacity_percent: 85,
+            bg_rgb: [14, 16, 24],
+            corner_radius: 10.0,
+        };
+
+        let mut out = default.clone();
+
+        let cfg_path = exe_root_dir().join("frence.ini");
+        let Ok(text) = std::fs::read_to_string(&cfg_path) else {
+            return out;
+        };
+
+        let mut section = String::new();
+        for raw in text.lines() {
+            let line = raw.trim();
+            if line.is_empty() || line.starts_with(';') || line.starts_with('#') {
+                continue;
+            }
+            if line.starts_with('[') && line.ends_with(']') && line.len() > 2 {
+                section = line[1..line.len() - 1].trim().to_string();
+                continue;
+            }
+            let Some(eq) = line.find('=') else {
+                continue;
+            };
+            let key = line[..eq].trim();
+            let val = line[eq + 1..].trim();
+
+            match (section.as_str(), key) {
+                ("window", "width") => {
+                    if let Ok(v) = val.parse::<f32>() {
+                        out.window_width = v.max(200.0);
+                    }
+                }
+                ("window", "height") => {
+                    if let Ok(v) = val.parse::<f32>() {
+                        out.window_height = v.max(200.0);
+                    }
+                }
+                ("window", "min_width") => {
+                    if let Ok(v) = val.parse::<f32>() {
+                        out.window_min_width = v.max(160.0);
+                    }
+                }
+                ("window", "min_height") => {
+                    if let Ok(v) = val.parse::<f32>() {
+                        out.window_min_height = v.max(160.0);
+                    }
+                }
+                ("window", "transparent") => {
+                    let v = val.to_ascii_lowercase();
+                    out.transparent = matches!(v.as_str(), "1" | "true" | "yes" | "on" | "vrai");
+                }
+                ("window", "decorations") => {
+                    let v = val.to_ascii_lowercase();
+                    out.decorations = matches!(v.as_str(), "1" | "true" | "yes" | "on" | "vrai");
+                }
+                ("icons", "size_px") => {
+                    if let Ok(v) = val.parse::<f32>() {
+                        out.icon_size_px = v.clamp(72.0, 156.0);
+                    }
+                }
+                ("window", "opacity") => {
+                    if let Ok(v) = val.parse::<i32>() {
+                        let clamped = v.clamp(0, 100) as u8;
+                        out.opacity_percent = clamped;
+                    }
+                }
+                ("window", "bg_color") | ("theme", "bg_color") => {
+                    if let Some(rgb) = Self::parse_rgb(val) {
+                        out.bg_rgb = rgb;
+                    }
+                }
+                ("window", "corner_radius") | ("theme", "corner_radius") => {
+                    if let Ok(v) = val.parse::<f32>() {
+                        out.corner_radius = v.clamp(0.0, 40.0);
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        out
+    }
+
+    fn opacity_factor(&self) -> f32 {
+        (self.opacity_percent as f32 / 100.0).clamp(0.0, 1.0)
+    }
+
+    fn bg_color(&self, alpha: u8) -> egui::Color32 {
+        egui::Color32::from_rgba_unmultiplied(self.bg_rgb[0], self.bg_rgb[1], self.bg_rgb[2], alpha)
+    }
 }
 
 impl ZoneApp {
-    fn new() -> Self {
+    fn new(config: &AppConfig) -> Self {
         let exe_root = exe_root_dir();
         let mut zones = discover_zones(&exe_root);
         if zones.is_empty() {
@@ -80,8 +231,11 @@ impl ZoneApp {
             folder,
             entries: Vec::new(),
             textures: HashMap::new(),
-            icon_display_px: 118.0,
+            icon_display_px: config.icon_size_px,
             failed_icons: HashSet::new(),
+            query: String::new(),
+            config: config.clone(),
+            last_tex_sz: 0,
         };
         s.rescan();
         s
@@ -136,11 +290,7 @@ impl ZoneApp {
                 continue;
             }
             let is_dir = e.file_type().map(|t| t.is_dir()).unwrap_or(false);
-            self.entries.push(Entry {
-                path,
-                name,
-                is_dir,
-            });
+            self.entries.push(Entry { path, name, is_dir });
         }
     }
 
@@ -156,10 +306,28 @@ impl ZoneApp {
         let tex_sz = (self.icon_display_px * 4.0 / 3.0)
             .round()
             .clamp(64.0, 128.0) as i32;
+
+        // Si la taille d’icône a changé, on invalide l’ancien cache.
+        if self.last_tex_sz != 0 && self.last_tex_sz != tex_sz {
+            self.textures.clear();
+            self.failed_icons.clear();
+        }
+        self.last_tex_sz = tex_sz;
+
+        // Limite de temps par frame pour éviter les freeze UI.
+        let time_budget = std::time::Duration::from_millis(8);
+        let start = std::time::Instant::now();
+
+        let q = self.query.trim().to_lowercase();
+        let filter_active = !q.is_empty();
+
         let mut loads = 0;
         for e in &self.entries {
             let p = &e.path;
             if self.textures.contains_key(p) || self.failed_icons.contains(p) {
+                continue;
+            }
+            if filter_active && !e.name.to_lowercase().contains(&q) {
                 continue;
             }
             let Some(img) = win_icon::icon_for_path(p, tex_sz) else {
@@ -173,7 +341,7 @@ impl ZoneApp {
             );
             self.textures.insert(p.clone(), tex);
             loads += 1;
-            if loads >= 128 {
+            if loads >= 128 || start.elapsed() > time_budget {
                 break;
             }
         }
@@ -182,6 +350,35 @@ impl ZoneApp {
 
 impl eframe::App for ZoneApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        let opacity = self.config.opacity_factor();
+        let scale_alpha = |a: u8| -> u8 { ((a as f32) * opacity).round().clamp(0.0, 255.0) as u8 };
+        let radius = self.config.corner_radius;
+
+        // Visuel global (thème sombre + coins arrondis) — appliqué à chaque frame pour suivre
+        // d’éventuels changements (DPI, etc.) sans gérer d’état global ailleurs.
+        ctx.set_visuals({
+            let mut v = egui::Visuals::dark();
+            v.window_rounding = egui::Rounding::same(radius);
+            v.menu_rounding = egui::Rounding::same(radius.max(4.0) - 2.0);
+            v.widgets.noninteractive.rounding = egui::Rounding::same(radius.max(3.0) - 3.0);
+            v.widgets.inactive.rounding = egui::Rounding::same(radius.max(3.0) - 3.0);
+            v.widgets.hovered.rounding = egui::Rounding::same(radius.max(3.0) - 3.0);
+            v.widgets.active.rounding = egui::Rounding::same(radius.max(3.0) - 3.0);
+            v.widgets.open.rounding = egui::Rounding::same(radius.max(3.0) - 3.0);
+            v.selection.bg_fill =
+                egui::Color32::from_rgba_unmultiplied(88, 120, 255, scale_alpha(255));
+            v.selection.stroke = egui::Stroke::new(1.0, egui::Color32::from_rgb(140, 165, 255));
+            v.faint_bg_color = egui::Color32::from_rgba_unmultiplied(24, 28, 38, scale_alpha(210));
+            v.extreme_bg_color = egui::Color32::from_rgb(10, 12, 18);
+            v.window_shadow = egui::Shadow {
+                offset: egui::vec2(0.0, 14.0),
+                blur: 40.0,
+                spread: 0.0,
+                color: egui::Color32::from_black_alpha(110),
+            };
+            v
+        });
+
         if ctx.input(|i| i.key_pressed(egui::Key::ArrowLeft)) {
             self.go_prev();
         }
@@ -192,26 +389,84 @@ impl eframe::App for ZoneApp {
         self.load_pending_icons(ctx);
 
         let zone_title = self.title_label();
-        ctx.send_viewport_cmd(egui::ViewportCommand::Title(format!("{zone_title} — frence")));
+        ctx.send_viewport_cmd(egui::ViewportCommand::Title(format!(
+            "{zone_title} — frence"
+        )));
 
-        let frame_fill = egui::Color32::from_rgba_unmultiplied(18, 20, 28, 200);
         let n_zones = self.zones.len();
         let can_nav = n_zones > 1;
         let idx = self.zone_index + 1;
 
+        // Fond "verre" + léger dégradé (surtout visible avec la fenêtre transparente).
+        egui::CentralPanel::default()
+            .frame(egui::Frame::none())
+            .show(ctx, |ui| {
+                let rect = ui.max_rect();
+                let painter = ui.painter();
+
+                let brighten = |rgb: [u8; 3], mul: f32| -> [u8; 3] {
+                    [
+                        ((rgb[0] as f32) * mul).round().clamp(0.0, 255.0) as u8,
+                        ((rgb[1] as f32) * mul).round().clamp(0.0, 255.0) as u8,
+                        ((rgb[2] as f32) * mul).round().clamp(0.0, 255.0) as u8,
+                    ]
+                };
+
+                let base = self.config.bg_rgb;
+                let top_rgb = brighten(base, 0.95);
+                let mid_rgb = brighten(base, 1.05);
+                let bot_rgb = brighten(base, 0.85);
+
+                let top = egui::Color32::from_rgba_unmultiplied(
+                    top_rgb[0],
+                    top_rgb[1],
+                    top_rgb[2],
+                    scale_alpha(190),
+                );
+                let mid = egui::Color32::from_rgba_unmultiplied(
+                    mid_rgb[0],
+                    mid_rgb[1],
+                    mid_rgb[2],
+                    scale_alpha(185),
+                );
+                let bot = egui::Color32::from_rgba_unmultiplied(
+                    bot_rgb[0],
+                    bot_rgb[1],
+                    bot_rgb[2],
+                    scale_alpha(175),
+                );
+
+                // Trois bandes verticales pour simuler un dégradé (simple et stable).
+                let h = rect.height().max(1.0);
+                let r1 = egui::Rect::from_min_max(
+                    rect.min,
+                    egui::pos2(rect.max.x, rect.min.y + h * 0.32),
+                );
+                let r2 = egui::Rect::from_min_max(
+                    egui::pos2(rect.min.x, rect.min.y + h * 0.32),
+                    egui::pos2(rect.max.x, rect.min.y + h * 0.72),
+                );
+                let r3 = egui::Rect::from_min_max(
+                    egui::pos2(rect.min.x, rect.min.y + h * 0.72),
+                    rect.max,
+                );
+
+                painter.rect_filled(r1, 14.0, top);
+                painter.rect_filled(r2, 14.0, mid);
+                painter.rect_filled(r3, 14.0, bot);
+            });
+
+        let frame_fill = self.config.bg_color(scale_alpha(200));
         egui::CentralPanel::default()
             .frame(
                 egui::Frame::none()
                     .fill(frame_fill)
-                    .rounding(egui::Rounding::same(10.0))
-                    .stroke(egui::Stroke::new(
-                        1.0,
-                        egui::Color32::from_white_alpha(40),
-                    ))
+                    .rounding(egui::Rounding::same(radius))
+                    .stroke(egui::Stroke::new(1.0, egui::Color32::from_white_alpha(40)))
                     .inner_margin(egui::Margin::same(12.0)),
             )
             .show(ctx, |ui| {
-                let header_h = 40.0;
+                let header_h = 46.0;
                 let (r, _) = ui.allocate_exact_size(
                     egui::vec2(ui.available_width(), header_h),
                     egui::Sense::click_and_drag(),
@@ -223,7 +478,9 @@ impl eframe::App for ZoneApp {
                     ctx.send_viewport_cmd(egui::ViewportCommand::StartDrag);
                 }
                 ui.allocate_new_ui(egui::UiBuilder::new().max_rect(r), |ui| {
-                    ui.horizontal_centered(|ui| {
+                    ui.horizontal(|ui| {
+                        ui.spacing_mut().item_spacing.x = 10.0;
+
                         let prev = ui
                             .add_enabled(
                                 can_nav,
@@ -266,6 +523,63 @@ impl eframe::App for ZoneApp {
                         if next.clicked() {
                             self.go_next();
                         }
+
+                        ui.add_space(10.0);
+
+                        // Recherche (filtre instantané).
+                        let search = ui.add(
+                            egui::TextEdit::singleline(&mut self.query)
+                                .hint_text("Rechercher…")
+                                .desired_width(220.0),
+                        );
+                        if search.has_focus() && ctx.input(|i| i.key_pressed(egui::Key::Escape)) {
+                            self.query.clear();
+                            ctx.memory_mut(|m| m.surrender_focus(search.id));
+                        }
+                        if search.hovered() {
+                            search.on_hover_text("Échap pour effacer et quitter le champ");
+                        }
+
+                        // Taille d’icône (UX: réglable sans menu).
+                        ui.add(
+                            egui::Slider::new(&mut self.icon_display_px, 72.0..=156.0)
+                                .show_value(false)
+                                .text(""),
+                        )
+                        .on_hover_text("Taille des icônes");
+
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                            ui.spacing_mut().item_spacing.x = 6.0;
+
+                            // Contrôles fenêtre (puisque `with_decorations(false)`).
+                            let close = ui
+                                .add(
+                                    egui::Button::new(
+                                        egui::RichText::new("✕")
+                                            .size(16.0)
+                                            .color(egui::Color32::from_rgb(255, 200, 200)),
+                                    )
+                                    .fill(egui::Color32::from_rgba_unmultiplied(30, 18, 22, 220)),
+                                )
+                                .on_hover_text("Fermer");
+                            if close.clicked() {
+                                ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                            }
+
+                            let minimize = ui
+                                .add(
+                                    egui::Button::new(
+                                        egui::RichText::new("—")
+                                            .size(18.0)
+                                            .color(egui::Color32::from_gray(220)),
+                                    )
+                                    .fill(egui::Color32::from_rgba_unmultiplied(22, 26, 36, 210)),
+                                )
+                                .on_hover_text("Réduire");
+                            if minimize.clicked() {
+                                ctx.send_viewport_cmd(egui::ViewportCommand::Minimized(true));
+                            }
+                        });
                     });
                 });
 
@@ -274,30 +588,54 @@ impl eframe::App for ZoneApp {
                 ui.add_space(8.0);
 
                 let icon = self.icon_display_px;
-                let cell_w = icon;
-
-                let tex_ids: HashMap<PathBuf, egui::TextureId> = self
-                    .textures
-                    .iter()
-                    .map(|(k, v)| (k.clone(), v.id()))
-                    .collect();
+                let cell_w = icon + 8.0;
 
                 // Grille explicite : une ligne horizontale par rangée (egui::Grid seule ne passe pas
                 // automatiquement à la ligne sans `end_row()` après chaque rangée).
                 egui::ScrollArea::vertical().show(ui, |ui| {
+                    let q = self.query.trim().to_lowercase();
+                    let filtered: Vec<&Entry> = if q.is_empty() {
+                        self.entries.iter().collect()
+                    } else {
+                        self.entries
+                            .iter()
+                            .filter(|e| e.name.to_lowercase().contains(&q))
+                            .collect()
+                    };
+
                     let avail = ui.available_width();
-                    let gap_x = 18.0;
+                    let gap_x = 12.0;
                     let gap_y = 26.0;
-                    let cols = ((avail + gap_x) / (cell_w + gap_x)).floor() as usize;
+                    let cols = ((avail + gap_x * 0.5) / (cell_w + gap_x)).floor() as usize;
                     let cols = cols.max(1);
 
-                    for row in self.entries.chunks(cols) {
+                    if filtered.is_empty() {
+                        ui.add_space(36.0);
+                        ui.vertical_centered(|ui| {
+                            ui.label(
+                                egui::RichText::new("Aucun résultat")
+                                    .size(18.0)
+                                    .strong()
+                                    .color(egui::Color32::from_gray(230)),
+                            );
+                            ui.add_space(6.0);
+                            ui.label(
+                                egui::RichText::new(
+                                    "Essayez un autre mot-clé, ou Échap pour effacer.",
+                                )
+                                .size(12.0)
+                                .color(egui::Color32::from_gray(170)),
+                            );
+                        });
+                        return;
+                    }
+
+                    for row in filtered.chunks(cols) {
                         ui.horizontal_top(|ui| {
                             ui.spacing_mut().item_spacing = egui::vec2(gap_x, gap_y);
                             for e in row {
-                                let tid = tex_ids.get(&e.path).copied();
-                                let loading =
-                                    tid.is_none() && !self.failed_icons.contains(&e.path);
+                                let tid = self.textures.get(&e.path).map(|t| t.id());
+                                let loading = tid.is_none() && !self.failed_icons.contains(&e.path);
                                 let failed = self.failed_icons.contains(&e.path);
 
                                 ui.allocate_ui_with_layout(
@@ -320,7 +658,10 @@ impl eframe::App for ZoneApp {
                                         }
 
                                         if let Some(tid) = tid {
-                                            let uv = egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0));
+                                            let uv = egui::Rect::from_min_max(
+                                                egui::pos2(0.0, 0.0),
+                                                egui::pos2(1.0, 1.0),
+                                            );
                                             ui.painter().image(
                                                 tid,
                                                 img_rect,
@@ -331,13 +672,19 @@ impl eframe::App for ZoneApp {
                                             ui.painter().rect_filled(
                                                 img_rect,
                                                 4.0,
-                                                egui::Color32::from_rgba_unmultiplied(20, 22, 30, 255),
+                                                egui::Color32::from_rgba_unmultiplied(
+                                                    20, 22, 30, 255,
+                                                ),
                                             );
                                             ui.allocate_new_ui(
-                                                egui::UiBuilder::new()
-                                                    .max_rect(img_rect)
-                                                    .layout(egui::Layout::centered_and_justified(egui::Direction::TopDown)),
-                                                |ui| { ui.spinner(); }
+                                                egui::UiBuilder::new().max_rect(img_rect).layout(
+                                                    egui::Layout::centered_and_justified(
+                                                        egui::Direction::TopDown,
+                                                    ),
+                                                ),
+                                                |ui| {
+                                                    ui.spinner();
+                                                },
                                             );
                                         } else if failed {
                                             let fallback = if e.is_dir { "📁" } else { "📄" };
@@ -351,11 +698,19 @@ impl eframe::App for ZoneApp {
                                         }
 
                                         if !e.is_dir {
-                                            let ext = e.path.extension().and_then(|s| s.to_str()).unwrap_or("").to_lowercase();
+                                            let ext = e
+                                                .path
+                                                .extension()
+                                                .and_then(|s| s.to_str())
+                                                .unwrap_or("")
+                                                .to_lowercase();
                                             if ext == "url" || ext == "lnk" {
                                                 let overlay_size = 20.0;
                                                 let overlay_rect = egui::Rect::from_min_size(
-                                                    egui::pos2(img_rect.min.x, img_rect.max.y - overlay_size),
+                                                    egui::pos2(
+                                                        img_rect.min.x,
+                                                        img_rect.max.y - overlay_size,
+                                                    ),
                                                     egui::vec2(overlay_size, overlay_size),
                                                 );
                                                 ui.painter().rect_filled(
@@ -377,7 +732,9 @@ impl eframe::App for ZoneApp {
 
                                         // Retrait de l'extension du nom pour l'affichage
                                         let mut display_name = e.name.clone();
-                                        if e.name.to_lowercase().ends_with(".url") || e.name.to_lowercase().ends_with(".lnk") {
+                                        if e.name.to_lowercase().ends_with(".url")
+                                            || e.name.to_lowercase().ends_with(".lnk")
+                                        {
                                             if let Some(idx) = display_name.rfind('.') {
                                                 display_name.truncate(idx);
                                             }
@@ -396,9 +753,9 @@ impl eframe::App for ZoneApp {
                                         ui.add(
                                             egui::Label::new(name_rt)
                                                 .wrap()
-                                                .halign(egui::Align::Center)
+                                                .halign(egui::Align::Center),
                                         );
-                                    }
+                                    },
                                 );
                             }
                         });
@@ -410,19 +767,23 @@ impl eframe::App for ZoneApp {
 }
 
 fn main() -> eframe::Result<()> {
+    let config = AppConfig::load();
+
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_title("frence — zone dossier")
-            .with_inner_size([440.0, 560.0])
-            .with_min_inner_size([320.0, 280.0])
-            .with_transparent(true)
-            .with_decorations(false),
+            .with_inner_size([config.window_width, config.window_height])
+            .with_min_inner_size([config.window_min_width, config.window_min_height])
+            .with_transparent(config.transparent)
+            .with_decorations(config.decorations),
         ..Default::default()
     };
+
+    let app_config = config.clone();
 
     eframe::run_native(
         "frence",
         options,
-        Box::new(|_cc| Ok(Box::new(ZoneApp::new()) as Box<dyn eframe::App>)),
+        Box::new(move |_cc| Ok(Box::new(ZoneApp::new(&app_config)) as Box<dyn eframe::App>)),
     )
 }

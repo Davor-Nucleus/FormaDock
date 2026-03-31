@@ -12,7 +12,7 @@ use tray_icon::{Icon as TrayIconImage, TrayIcon, TrayIconBuilder};
 use app::ZoneApp;
 use model::AppConfig;
 
-/// Point d'entrée principal de l'application. 
+/// Point d'entrée principal de l'application.
 /// Gère la création de la fenêtre native, de la boucle WGPU et de l'icône système cachée (Tray Icon).
 fn main() -> eframe::Result<()> {
     // 1. Chargement du Modèle Statique
@@ -64,7 +64,7 @@ fn main() -> eframe::Result<()> {
         .with_min_inner_size([config.window_min_width, config.window_min_height])
         .with_transparent(config.transparent)
         .with_decorations(config.decorations)
-        .with_taskbar(false)  // Cache l'appli de la barre des fenêtres
+        .with_taskbar(false) // Cache l'appli de la barre des fenêtres
         .with_window_level(egui::WindowLevel::AlwaysOnBottom);
 
     if let (Some(x), Some(y)) = (config.window_pos_x, config.window_pos_y) {
@@ -85,6 +85,8 @@ fn main() -> eframe::Result<()> {
     eframe::run_native(
         "frence",
         options,
-        Box::new(move |cc| Ok(Box::new(ZoneApp::new(&app_config, cc.egui_ctx.clone())) as Box<dyn eframe::App>)),
+        Box::new(move |cc| {
+            Ok(Box::new(ZoneApp::new(&app_config, cc.egui_ctx.clone())) as Box<dyn eframe::App>)
+        }),
     )
 }

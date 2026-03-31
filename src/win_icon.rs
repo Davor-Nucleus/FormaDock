@@ -223,7 +223,8 @@ pub fn shgetfile_icon(path: &Path, size_px: i32) -> Option<ColorImage> {
 }
 
 use windows::Win32::System::Com::{
-    CoCreateInstance, CoInitialize, CoInitializeEx, CoUninitialize, IPersistFile, CLSCTX_INPROC_SERVER, STGM, COINIT_MULTITHREADED,
+    CoCreateInstance, CoInitialize, CoInitializeEx, CoUninitialize, IPersistFile,
+    CLSCTX_INPROC_SERVER, COINIT_MULTITHREADED, STGM,
 };
 use windows::Win32::UI::Shell::{IShellLinkW, ShellLink};
 use windows::Win32::UI::WindowsAndMessaging::PrivateExtractIconsW;

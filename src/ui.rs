@@ -39,15 +39,12 @@ pub fn update_view(app: &mut ZoneApp, ctx: &egui::Context) {
         v.widgets.hovered.rounding = egui::Rounding::same(radius.max(3.0) - 3.0);
         v.widgets.active.rounding = egui::Rounding::same(radius.max(3.0) - 3.0);
         v.widgets.open.rounding = egui::Rounding::same(radius.max(3.0) - 3.0);
-        
-        v.selection.bg_fill =
-            egui::Color32::from_rgba_unmultiplied(88, 120, 255, scale_alpha(40));
-            
-        v.faint_bg_color =
-            egui::Color32::from_rgba_unmultiplied(24, 28, 38, scale_alpha(15));
-        v.extreme_bg_color =
-            egui::Color32::from_rgba_unmultiplied(10, 12, 18, scale_alpha(10));
-            
+
+        v.selection.bg_fill = egui::Color32::from_rgba_unmultiplied(88, 120, 255, scale_alpha(40));
+
+        v.faint_bg_color = egui::Color32::from_rgba_unmultiplied(24, 28, 38, scale_alpha(15));
+        v.extreme_bg_color = egui::Color32::from_rgba_unmultiplied(10, 12, 18, scale_alpha(10));
+
         v.window_shadow = egui::Shadow {
             offset: egui::vec2(0.0, 14.0),
             blur: 40.0,
@@ -82,7 +79,7 @@ pub fn update_view(app: &mut ZoneApp, ctx: &egui::Context) {
         app.icon_display_px = (app.icon_display_px * zoom_delta).clamp(32.0, 512.0);
     }
 
-    // 4. Interface Haut-Niveau 
+    // 4. Interface Haut-Niveau
     let zone_title = app.title_label();
     ctx.send_viewport_cmd(egui::ViewportCommand::Title(format!(
         "{zone_title} — frence"
@@ -104,34 +101,62 @@ pub fn update_view(app: &mut ZoneApp, ctx: &egui::Context) {
             };
 
             let base = app.config.bg_rgb;
+
+            let base_alpha = (app.config.opacity_percent as f32 * 2.55)
+                .round()
+                .clamp(0.0, 255.0) as u8;
+            let base_color =
+                egui::Color32::from_rgba_unmultiplied(base[0], base[1], base[2], base_alpha);
+            painter.rect_filled(rect, radius, base_color);
+
             let top_rgb = brighten(base, 0.95);
             let mid_rgb = brighten(base, 1.05);
             let bot_rgb = brighten(base, 0.85);
 
             let top = egui::Color32::from_rgba_unmultiplied(
-                top_rgb[0], top_rgb[1], top_rgb[2], scale_alpha(30),
+                top_rgb[0],
+                top_rgb[1],
+                top_rgb[2],
+                scale_alpha(30),
             );
             let mid = egui::Color32::from_rgba_unmultiplied(
-                mid_rgb[0], mid_rgb[1], mid_rgb[2], scale_alpha(25),
+                mid_rgb[0],
+                mid_rgb[1],
+                mid_rgb[2],
+                scale_alpha(25),
             );
             let bot = egui::Color32::from_rgba_unmultiplied(
-                bot_rgb[0], bot_rgb[1], bot_rgb[2], scale_alpha(20),
+                bot_rgb[0],
+                bot_rgb[1],
+                bot_rgb[2],
+                scale_alpha(20),
             );
 
             let h = rect.height().max(1.0);
-            let r1 = egui::Rect::from_min_max(rect.min, egui::pos2(rect.max.x, rect.min.y + h * 0.32));
+            let r1 =
+                egui::Rect::from_min_max(rect.min, egui::pos2(rect.max.x, rect.min.y + h * 0.32));
             let r2 = egui::Rect::from_min_max(
                 egui::pos2(rect.min.x, rect.min.y + h * 0.32),
                 egui::pos2(rect.max.x, rect.min.y + h * 0.72),
             );
-            let r3 = egui::Rect::from_min_max(
-                egui::pos2(rect.min.x, rect.min.y + h * 0.72),
-                rect.max,
-            );
+            let r3 =
+                egui::Rect::from_min_max(egui::pos2(rect.min.x, rect.min.y + h * 0.72), rect.max);
+            let r_top = egui::Rounding {
+                nw: radius,
+                ne: radius,
+                sw: 0.0,
+                se: 0.0,
+            };
+            let r_bot = egui::Rounding {
+                nw: 0.0,
+                ne: 0.0,
+                sw: radius,
+                se: radius,
+            };
 
-            painter.rect_filled(r1, 14.0, top);
-            painter.rect_filled(r2, 14.0, mid);
-            painter.rect_filled(r3, 14.0, bot);
+            painter.rect_filled(r1, r_top, top);
+            painter.rect_filled(r2, 0.0, mid);
+            painter.rect_filled(r3, r_bot, bot);
         });
 
     // 5. Contenu Interféré Interactif
@@ -144,7 +169,10 @@ pub fn update_view(app: &mut ZoneApp, ctx: &egui::Context) {
             egui::Frame::none()
                 .fill(egui::Color32::TRANSPARENT)
                 .rounding(egui::Rounding::same(radius))
-                .stroke(egui::Stroke::new(1.0, egui::Color32::from_white_alpha(scale_alpha(5))))
+                .stroke(egui::Stroke::new(
+                    1.0,
+                    egui::Color32::from_white_alpha(scale_alpha(5)),
+                ))
                 .inner_margin(egui::Margin {
                     left: 12.0,
                     right: 0.0,
@@ -159,22 +187,29 @@ pub fn update_view(app: &mut ZoneApp, ctx: &egui::Context) {
                 egui::vec2(ui.available_width(), header_h),
                 egui::Sense::click_and_drag(),
             );
-            
+
             if ui
                 .interact(r, ui.id().with("drag_strip"), egui::Sense::drag())
                 .drag_started_by(egui::PointerButton::Primary)
             {
                 ctx.send_viewport_cmd(egui::ViewportCommand::StartDrag); // Déplace la fenêtre
             }
-            
+
             ui.allocate_new_ui(egui::UiBuilder::new().max_rect(r), |ui| {
                 ui.horizontal(|ui| {
                     ui.spacing_mut().item_spacing.x = 10.0;
 
                     let prev = ui
-                        .add_enabled(can_nav, egui::Button::new(egui::RichText::new("◀").size(18.0)))
-                        .on_hover_text(if can_nav { "Lecture précédente (←)" } else { "1 dossier total" });
-                        
+                        .add_enabled(
+                            can_nav,
+                            egui::Button::new(egui::RichText::new("◀").size(18.0)),
+                        )
+                        .on_hover_text(if can_nav {
+                            "Lecture précédente (←)"
+                        } else {
+                            "1 dossier total"
+                        });
+
                     if prev.clicked() {
                         app.go_prev();
                     }
@@ -197,9 +232,16 @@ pub fn update_view(app: &mut ZoneApp, ctx: &egui::Context) {
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         ui.add_space(10.0);
                         let next = ui
-                            .add_enabled(can_nav, egui::Button::new(egui::RichText::new("▶").size(18.0)))
-                            .on_hover_text(if can_nav { "Lecture suivante (→)" } else { "1 dossier total" });
-                            
+                            .add_enabled(
+                                can_nav,
+                                egui::Button::new(egui::RichText::new("▶").size(18.0)),
+                            )
+                            .on_hover_text(if can_nav {
+                                "Lecture suivante (→)"
+                            } else {
+                                "1 dossier total"
+                            });
+
                         if next.clicked() {
                             app.go_next();
                         }
@@ -209,7 +251,10 @@ pub fn update_view(app: &mut ZoneApp, ctx: &egui::Context) {
                                 .show_value(false)
                                 .text(""),
                         )
-                        .on_hover_text(format!("Taille des icônes : {}px", app.icon_display_px.round() as i32));
+                        .on_hover_text(format!(
+                            "Taille des icônes : {}px",
+                            app.icon_display_px.round() as i32
+                        ));
 
                         ui.add_space(10.0);
                         let search = ui.add(
@@ -270,9 +315,11 @@ pub fn update_view(app: &mut ZoneApp, ctx: &egui::Context) {
                             );
                             ui.add_space(6.0);
                             ui.label(
-                                egui::RichText::new("Essayez un autre mot-clé, ou Échap pour annuler.")
-                                    .size(12.0)
-                                    .color(egui::Color32::from_gray(170)),
+                                egui::RichText::new(
+                                    "Essayez un autre mot-clé, ou Échap pour annuler.",
+                                )
+                                .size(12.0)
+                                .color(egui::Color32::from_gray(170)),
                             );
                         });
                         return;
@@ -306,23 +353,35 @@ pub fn update_view(app: &mut ZoneApp, ctx: &egui::Context) {
                                             let _ = open::that(&e.path); // Ouvre le système de fichiers externe
                                         }
 
-                                        // Application de l'image (texture) ou chargement paranoïaque 
+                                        // Application de l'image (texture) ou chargement paranoïaque
                                         if let Some(tid) = tid {
                                             let uv = egui::Rect::from_min_max(
-                                                egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0),
+                                                egui::pos2(0.0, 0.0),
+                                                egui::pos2(1.0, 1.0),
                                             );
-                                            ui.painter().image(tid, img_rect, uv, egui::Color32::WHITE);
+                                            ui.painter().image(
+                                                tid,
+                                                img_rect,
+                                                uv,
+                                                egui::Color32::WHITE,
+                                            );
                                         } else if loading {
                                             ui.painter().rect_filled(
                                                 img_rect,
                                                 4.0,
-                                                egui::Color32::from_rgba_unmultiplied(20, 22, 30, 20),
+                                                egui::Color32::from_rgba_unmultiplied(
+                                                    20, 22, 30, 20,
+                                                ),
                                             );
                                             ui.allocate_new_ui(
-                                                egui::UiBuilder::new()
-                                                    .max_rect(img_rect)
-                                                    .layout(egui::Layout::centered_and_justified(egui::Direction::TopDown)),
-                                                |ui| { ui.spinner(); },
+                                                egui::UiBuilder::new().max_rect(img_rect).layout(
+                                                    egui::Layout::centered_and_justified(
+                                                        egui::Direction::TopDown,
+                                                    ),
+                                                ),
+                                                |ui| {
+                                                    ui.spinner();
+                                                },
                                             );
                                         } else if failed {
                                             let fallback = if e.is_dir { "📁" } else { "📄" };
@@ -337,14 +396,26 @@ pub fn update_view(app: &mut ZoneApp, ctx: &egui::Context) {
 
                                         // Ajout de badge / tag Raccourci pour LNK et URL
                                         if !e.is_dir {
-                                            let ext = e.path.extension().and_then(|s| s.to_str()).unwrap_or("").to_lowercase();
+                                            let ext = e
+                                                .path
+                                                .extension()
+                                                .and_then(|s| s.to_str())
+                                                .unwrap_or("")
+                                                .to_lowercase();
                                             if ext == "url" || ext == "lnk" {
                                                 let overlay_size = 20.0;
                                                 let overlay_rect = egui::Rect::from_min_size(
-                                                    egui::pos2(img_rect.min.x, img_rect.max.y - overlay_size),
+                                                    egui::pos2(
+                                                        img_rect.min.x,
+                                                        img_rect.max.y - overlay_size,
+                                                    ),
                                                     egui::vec2(overlay_size, overlay_size),
                                                 );
-                                                ui.painter().rect_filled(overlay_rect, 0.0, egui::Color32::WHITE);
+                                                ui.painter().rect_filled(
+                                                    overlay_rect,
+                                                    0.0,
+                                                    egui::Color32::WHITE,
+                                                );
                                                 ui.painter().text(
                                                     overlay_rect.center(),
                                                     egui::Align2::CENTER_CENTER,
@@ -357,7 +428,9 @@ pub fn update_view(app: &mut ZoneApp, ctx: &egui::Context) {
 
                                         // Raccourcissement de l'affichage du nom du fichier
                                         let mut display_name = e.name.clone();
-                                        if e.name.to_lowercase().ends_with(".url") || e.name.to_lowercase().ends_with(".lnk") {
+                                        if e.name.to_lowercase().ends_with(".url")
+                                            || e.name.to_lowercase().ends_with(".lnk")
+                                        {
                                             if let Some(idx) = display_name.rfind('.') {
                                                 display_name.truncate(idx);
                                             }
@@ -373,7 +446,11 @@ pub fn update_view(app: &mut ZoneApp, ctx: &egui::Context) {
                                                 .size(12.0)
                                                 .color(egui::Color32::WHITE)
                                         };
-                                        ui.add(egui::Label::new(name_rt).wrap().halign(egui::Align::Center));
+                                        ui.add(
+                                            egui::Label::new(name_rt)
+                                                .wrap()
+                                                .halign(egui::Align::Center),
+                                        );
                                     },
                                 );
                             }

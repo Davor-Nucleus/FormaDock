@@ -1,5 +1,5 @@
-use std::path::{Path, PathBuf};
 use eframe::egui;
+use std::path::{Path, PathBuf};
 
 /// Répertoire contenant l’exécutable (racine de déploiement).
 /// Sert principalement à trouver `frence.ini` ou les applications.
@@ -67,14 +67,37 @@ pub struct AppConfig {
 impl AppConfig {
     /// Parse manuellement une chaîne de caractères RVB Hexadécimale (#RRGGBB) ou Liste (R,G,B).
     fn parse_rgb(s: &str) -> Option<[u8; 3]> {
-        let t = s.trim();
+        // Enlever les éventuels commentaires cachés à la fin du bloc valeur
+        let mut t = s.split(';').next().unwrap().trim();
+
+        // Supprimer les guillemets potentiels
+        if (t.starts_with('"') && t.ends_with('"')) || (t.starts_with('\'') && t.ends_with('\'')) {
+            if t.len() >= 2 {
+                t = &t[1..t.len() - 1].trim();
+            }
+        }
+
+        // Cas Classique: #RRGGBB ou #RGB
         if let Some(hex) = t.strip_prefix('#') {
             if hex.len() == 6 {
                 let r = u8::from_str_radix(&hex[0..2], 16).ok()?;
                 let g = u8::from_str_radix(&hex[2..4], 16).ok()?;
                 let b = u8::from_str_radix(&hex[4..6], 16).ok()?;
                 return Some([r, g, b]);
+            } else if hex.len() == 3 {
+                let r = u8::from_str_radix(&format!("{}{}", &hex[0..1], &hex[0..1]), 16).ok()?;
+                let g = u8::from_str_radix(&format!("{}{}", &hex[1..2], &hex[1..2]), 16).ok()?;
+                let b = u8::from_str_radix(&format!("{}{}", &hex[2..3], &hex[2..3]), 16).ok()?;
+                return Some([r, g, b]);
             }
+        }
+
+        // Cas où l'utilisateur a oublié le "#" (ex: "0E1018")
+        if t.len() == 6 && t.chars().all(|c| c.is_ascii_hexdigit()) {
+            let r = u8::from_str_radix(&t[0..2], 16).ok()?;
+            let g = u8::from_str_radix(&t[2..4], 16).ok()?;
+            let b = u8::from_str_radix(&t[4..6], 16).ok()?;
+            return Some([r, g, b]);
         }
 
         // Cas de secours : texte "R,G,B"
@@ -201,7 +224,7 @@ impl AppConfig {
         // Quand opacity_percent = 0, retourner un très petit facteur (pas zéro)
         // pour permettre la super-réduction au lieu de rendre invisible totalement
         if self.opacity_percent == 0 {
-            0.01 
+            0.01
         } else {
             (self.opacity_percent as f32 / 100.0).clamp(0.0, 1.0)
         }
@@ -210,9 +233,9 @@ impl AppConfig {
     /// Facteur de réduction supplémentaire exponentiel quand l'opacité globale tombe à zéro.
     pub fn zero_opacity_reduction(&self) -> f32 {
         if self.opacity_percent == 0 {
-            0.08  // Ultra-transparent: réduit drastiquement (8% de l'alpha)
+            0.08 // Ultra-transparent: réduit drastiquement (8% de l'alpha)
         } else {
-            1.0   // Normal: pas de réduction supplémentaire
+            1.0 // Normal: pas de réduction supplémentaire
         }
     }
 }

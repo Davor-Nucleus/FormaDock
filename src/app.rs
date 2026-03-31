@@ -1,8 +1,8 @@
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU32, Ordering};
-use std::sync::{Arc, Mutex};
 use std::sync::mpsc::{channel, Receiver, Sender};
+use std::sync::{Arc, Mutex};
 
 use eframe::egui;
 
@@ -70,7 +70,7 @@ pub struct ZoneApp {
     pub last_tex_sz: i32,
     /// Détecteur de First-Frame (chargement du viewport).
     pub first_frame: bool,
-    
+
     // Canaux Multithreads : Envois ou Réceptions depuis les workers.
     pub tx_req: Sender<IconRequest>,
     pub rx_res: Receiver<IconResponse>,
@@ -93,16 +93,16 @@ impl ZoneApp {
         let (tx_req, rx_req) = channel::<IconRequest>();
         let (tx_res, rx_res) = channel::<IconResponse>();
         let generation = Arc::new(AtomicU32::new(1));
-        
+
         let shared_rx = Arc::new(Mutex::new(rx_req));
-        
+
         // Démarrer 4 workers d'extraction lourde (ex: IShellItemImageFactory)
         for _ in 0..4 {
             let rx = shared_rx.clone();
             let tx = tx_res.clone();
             let gen_clone = generation.clone();
             let thread_ctx = ctx.clone();
-            
+
             std::thread::spawn(move || {
                 win_icon::init_com_worker_thread();
                 loop {
@@ -111,21 +111,24 @@ impl ZoneApp {
                         Ok(r) => r,
                         Err(_) => break, // Destruction du Controller
                     };
-                    
+
                     // Sécurité : Skip l'extraction si la page actuelle n'est plus demandée
                     if req.generation != gen_clone.load(Ordering::Relaxed) {
                         continue;
                     }
-                    
+
                     let img = win_icon::icon_for_path(&req.path, req.size_px);
-                    
+
                     // Double check après un calcul long
                     if req.generation == gen_clone.load(Ordering::Relaxed) {
-                        if tx.send(IconResponse {
-                            path: req.path,
-                            image: img,
-                            generation: req.generation,
-                        }).is_err() {
+                        if tx
+                            .send(IconResponse {
+                                path: req.path,
+                                image: img,
+                                generation: req.generation,
+                            })
+                            .is_err()
+                        {
                             break;
                         }
                         // Demande manuelle à egui de redessiner la vue.
@@ -176,7 +179,7 @@ impl ZoneApp {
         self.rescan();
     }
 
-    /// Parcourt en temps réel le dossier local pour trouver les fichiers, 
+    /// Parcourt en temps réel le dossier local pour trouver les fichiers,
     /// en incrémentant la génération logicielle.
     pub fn rescan(&mut self) {
         // Incrément de génération : les workers en arrière-plan abandonneront immédiatement la charge restante de l'ancienne page.
@@ -263,20 +266,23 @@ impl ZoneApp {
         let mut sent_this_frame = 0;
         for e in &self.entries {
             let p = &e.path;
-            if self.textures.contains_key(p) || self.failed_icons.contains(p) || self.queued_icons.contains(p) {
+            if self.textures.contains_key(p)
+                || self.failed_icons.contains(p)
+                || self.queued_icons.contains(p)
+            {
                 continue; // Icône déjà prête ou demandée.
             }
             if filter_active && !e.name.to_lowercase().contains(&q) {
                 continue; // Pas besoin de le traiter car exclu de l'écran.
             }
-            
+
             let _ = self.tx_req.send(IconRequest {
                 path: p.clone(),
                 size_px: tex_sz,
                 generation: current_gen,
             });
             self.queued_icons.insert(p.clone());
-            
+
             sent_this_frame += 1;
             // Ne pas saturer le queue mutuelle si la vue est massive.
             if sent_this_frame >= 64 {
@@ -291,5 +297,9 @@ impl eframe::App for ZoneApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         // Délègue entièrement le dessin du visuel aux fonctions externes (View).
         ui::update_view(self, ctx);
+    }
+
+    fn clear_color(&self, _visuals: &egui::Visuals) -> [f32; 4] {
+        [0.0, 0.0, 0.0, 0.0]
     }
 }

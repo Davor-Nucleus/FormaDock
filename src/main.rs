@@ -4,6 +4,9 @@ mod win_icon;
 
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::{Arc, Mutex};
+use std::sync::mpsc::{channel, Sender, Receiver};
 
 use eframe::egui;
 use tray_icon::menu::{Menu, MenuItem};
@@ -57,6 +60,18 @@ struct Entry {
     is_dir: bool,
 }
 
+struct IconRequest {
+    path: PathBuf,
+    size_px: i32,
+    generation: u32,
+}
+
+struct IconResponse {
+    path: PathBuf,
+    image: Option<egui::ColorImage>,
+    generation: u32,
+}
+
 struct ZoneApp {
     /// Dossiers à parcourir (sous-dossiers de la racine exe), ou la racine seule si aucun.
     zones: Vec<PathBuf>,
@@ -67,6 +82,7 @@ struct ZoneApp {
     /// Taille d’affichage des icônes (px).
     icon_display_px: f32,
     failed_icons: HashSet<PathBuf>,
+    queued_icons: HashSet<PathBuf>,
     /// Filtre de recherche (nom de fichier/dossier).
     query: String,
     /// Configuration globale (pour l’opacité, etc.).
@@ -75,6 +91,10 @@ struct ZoneApp {
     last_tex_sz: i32,
     /// Indique s'il s'agit de la première frame (pour forcer la position initiale).
     first_frame: bool,
+    
+    tx_req: Sender<IconRequest>,
+    rx_res: Receiver<IconResponse>,
+    generation: Arc<AtomicU32>,
 }
 
 #[derive(Clone)]
@@ -249,7 +269,7 @@ impl AppConfig {
 }
 
 impl ZoneApp {
-    fn new(config: &AppConfig) -> Self {
+    fn new(config: &AppConfig, ctx: egui::Context) -> Self {
         let exe_root = exe_root_dir();
         let mut zones = discover_zones(&exe_root);
         if zones.is_empty() {
@@ -259,6 +279,45 @@ impl ZoneApp {
         let folder = zones[0].clone();
         let icon_display_px = config.icon_size_px;
 
+        let (tx_req, rx_req) = channel::<IconRequest>();
+        let (tx_res, rx_res) = channel::<IconResponse>();
+        let generation = Arc::new(AtomicU32::new(1));
+        
+        let shared_rx = Arc::new(Mutex::new(rx_req));
+        for _ in 0..4 {
+            let rx = shared_rx.clone();
+            let tx = tx_res.clone();
+            let gen_clone = generation.clone();
+            let thread_ctx = ctx.clone();
+            
+            std::thread::spawn(move || {
+                win_icon::init_com_worker_thread();
+                loop {
+                    let req = match rx.lock().unwrap().recv() {
+                        Ok(r) => r,
+                        Err(_) => break, // Extinction
+                    };
+                    
+                    if req.generation != gen_clone.load(Ordering::Relaxed) {
+                        continue;
+                    }
+                    
+                    let img = win_icon::icon_for_path(&req.path, req.size_px);
+                    
+                    if req.generation == gen_clone.load(Ordering::Relaxed) {
+                        if tx.send(IconResponse {
+                            path: req.path,
+                            image: img,
+                            generation: req.generation,
+                        }).is_err() {
+                            break;
+                        }
+                        thread_ctx.request_repaint();
+                    }
+                }
+            });
+        }
+
         let mut s = Self {
             zones,
             zone_index: 0,
@@ -267,10 +326,14 @@ impl ZoneApp {
             textures: HashMap::new(),
             icon_display_px,
             failed_icons: HashSet::new(),
+            queued_icons: HashSet::new(),
             query: String::new(),
             config: config.clone(),
             last_tex_sz: 0,
             first_frame: true,
+            tx_req,
+            rx_res,
+            generation,
         };
         s.rescan();
         s
@@ -295,9 +358,11 @@ impl ZoneApp {
     }
 
     fn rescan(&mut self) {
+        self.generation.fetch_add(1, Ordering::Relaxed);
         self.entries.clear();
         self.textures.clear();
         self.failed_icons.clear();
+        self.queued_icons.clear();
 
         if let Ok(c) = std::fs::canonicalize(&self.folder) {
             self.folder = c;
@@ -344,39 +409,54 @@ impl ZoneApp {
 
         // Si la taille d’icône a changé, on invalide l’ancien cache.
         if self.last_tex_sz != 0 && self.last_tex_sz != tex_sz {
+            self.generation.fetch_add(1, Ordering::Relaxed);
             self.textures.clear();
             self.failed_icons.clear();
+            self.queued_icons.clear();
         }
         self.last_tex_sz = tex_sz;
 
-        // Limite de temps par frame pour éviter les freeze UI.
-        let time_budget = std::time::Duration::from_millis(8);
-        let start = std::time::Instant::now();
+        let current_gen = self.generation.load(Ordering::Relaxed);
+
+        // Lecture de tous les résultats d'arrière-plan reçus pour la page courante
+        while let Ok(res) = self.rx_res.try_recv() {
+            if res.generation == current_gen {
+                if let Some(img) = res.image {
+                    let tex = ctx.load_texture(
+                        format!("icn_{}", res.path.display()),
+                        img,
+                        egui::TextureOptions::LINEAR,
+                    );
+                    self.textures.insert(res.path.clone(), tex);
+                } else {
+                    self.failed_icons.insert(res.path.clone());
+                }
+            }
+        }
 
         let q = self.query.trim().to_lowercase();
         let filter_active = !q.is_empty();
 
-        let mut loads = 0;
+        let mut sent_this_frame = 0;
         for e in &self.entries {
             let p = &e.path;
-            if self.textures.contains_key(p) || self.failed_icons.contains(p) {
+            if self.textures.contains_key(p) || self.failed_icons.contains(p) || self.queued_icons.contains(p) {
                 continue;
             }
             if filter_active && !e.name.to_lowercase().contains(&q) {
                 continue;
             }
-            let Some(img) = win_icon::icon_for_path(p, tex_sz) else {
-                self.failed_icons.insert(p.clone());
-                continue;
-            };
-            let tex = ctx.load_texture(
-                format!("icn_{}", p.display()),
-                img,
-                egui::TextureOptions::LINEAR,
-            );
-            self.textures.insert(p.clone(), tex);
-            loads += 1;
-            if loads >= 128 || start.elapsed() > time_budget {
+            
+            let _ = self.tx_req.send(IconRequest {
+                path: p.clone(),
+                size_px: tex_sz,
+                generation: current_gen,
+            });
+            self.queued_icons.insert(p.clone());
+            
+            sent_this_frame += 1;
+            // On envoie la demande par lots pour éviter d'inonder la queue soudainement et laisser la loop respirer
+            if sent_this_frame >= 64 {
                 break;
             }
         }
@@ -894,6 +974,6 @@ fn main() -> eframe::Result<()> {
     eframe::run_native(
         "frence",
         options,
-        Box::new(move |_cc| Ok(Box::new(ZoneApp::new(&app_config)) as Box<dyn eframe::App>)),
+        Box::new(move |cc| Ok(Box::new(ZoneApp::new(&app_config, cc.egui_ctx.clone())) as Box<dyn eframe::App>)),
     )
 }

@@ -223,10 +223,16 @@ pub fn shgetfile_icon(path: &Path, size_px: i32) -> Option<ColorImage> {
 }
 
 use windows::Win32::System::Com::{
-    CoCreateInstance, CoInitialize, CoUninitialize, IPersistFile, CLSCTX_INPROC_SERVER, STGM,
+    CoCreateInstance, CoInitialize, CoInitializeEx, CoUninitialize, IPersistFile, CLSCTX_INPROC_SERVER, STGM, COINIT_MULTITHREADED,
 };
 use windows::Win32::UI::Shell::{IShellLinkW, ShellLink};
 use windows::Win32::UI::WindowsAndMessaging::PrivateExtractIconsW;
+
+pub fn init_com_worker_thread() {
+    unsafe {
+        let _ = CoInitializeEx(None, COINIT_MULTITHREADED);
+    }
+}
 
 pub fn extract_icon_file(path: &Path, size_px: i32) -> Option<ColorImage> {
     unsafe {

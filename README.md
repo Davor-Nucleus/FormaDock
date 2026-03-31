@@ -15,12 +15,19 @@ frence est un lanceur/explorateur d'applications et de fichiers dynamique, lége
 
 Le projet sépare la logique système de la logique graphique pour produire une application extrêmement légère, sans pour autant sacrifier WGPU.
 
-### 1. Le Cœur Graphique (`src/main.rs`)
-Responsable de l'interaction utilisateur et de la rétention d'état (fenêtre sans état pur). 
-- Modèle l'application comme un `eframe::App` (`ZoneApp`).
-- Maintient un chargeur d'icônes intelligent qui génère à la volée de nouvelles textures `egui::TextureHandle` sans bloquer complètement l'interface grâce à un *time-budget* (budget temps de 8 ms maximum par rafraîchissement d'icône d'affilée).
-- Nettoyage sécurisé à chaque basculement de page : pour ne pas surcharger la RAM ni crasher l'intégration WGPU, la libération des pointeurs se trouve isolée hors du thread de validation du cycle d'instructions (*Update function end-tail allocation*).
-- Lit en temps réel et applique un fichier de style `.ini`.
+La base de code respecte le cadriciel **MVC (Modèle-Vue-Contrôleur)** couplé à une conception multithreadée :
+
+### 1. Structure Modulaire (`src/`)
+- **`model.rs` (Modèle)** : Contient les définitions pures de données (`AppConfig` et le parseur `.ini`, `IconRequest`, `Entry`), dénuées de charge UI ou système.
+- **`app.rs` (Contrôleur)** : Cœur logique de `ZoneApp`. Gère la configuration d'état (State), l'ouverture des dossiers, le filtre de recherche, ainsi que le pool de threads en arrière-plan et sa file d'attente.
+- **`ui.rs` (Vue)** : Pilote exclusif du moteur WGPU via Egui. Ne stocke rien, lit le `model` via `app`, et rafraichit la fenêtre (Background et Responsive grid).
+- **`main.rs`** : Orchestrateur initial et lanceur dans la `tray_icon` (fenêtre d'arrière plan).
+
+### 2. File système Asynchrone Multithreadée (Multi-Threading)
+L'application crée **4 Threads Systèmes "Workers" invisibles** au démarrage.
+Au moment de charger de gigantesques répertoires d'icônes, l'application soumet des paquets de travail (MPSC).
+- **0 Blocage Visuel** : La fenêtre reste fluide à ~144 Hz et vos curseurs/scrolls ne gèleront jamais, même sur de lentes API `IShellItem` réseau.
+- **Refoulement intelligent ("Ghost cancellation")** : Lorsqu'un dossier est fermé, le contrôleur émet une nouvelle "Génération de Page". Les threads jèteront gracieusement les milliers d'icônes obsolètes calculées qui n'ont plus lieu d'être sans provoquer de "panic!" mémoire (Memory Leak ou Ghost loading).
 
 ### 2. Pont COM / Win32 (`src/win_icon.rs`)
 Cœur d'interaction avec le noyau Windows gérant tout un ensemble de pointeurs `unsafe`.

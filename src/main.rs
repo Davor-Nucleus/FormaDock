@@ -130,7 +130,7 @@ impl AppConfig {
             transparent: true,
             decorations: false,
             icon_size_px: 118.0,
-            opacity_percent: 85,
+            opacity_percent: 40,
             bg_rgb: [14, 16, 24],
             corner_radius: 10.0,
             window_pos_x: None,
@@ -228,7 +228,23 @@ impl AppConfig {
     }
 
     fn opacity_factor(&self) -> f32 {
-        (self.opacity_percent as f32 / 100.0).clamp(0.0, 1.0)
+        // Conversion de pourcentage d'opacité en facteur de 0.0 à 1.0
+        // Quand opacity_percent = 0, retourner un très petit facteur (pas zéro)
+        // pour permettre la super-réduction au lieu de rendre invisible totalement
+        if self.opacity_percent == 0 {
+            0.01  // 1% : permet une transparence extrême avec contrôle
+        } else {
+            (self.opacity_percent as f32 / 100.0).clamp(0.0, 1.0)
+        }
+    }
+
+    /// Facteur de réduction supplémentaire quand opacity = 0 pour extreme transparency
+    fn zero_opacity_reduction(&self) -> f32 {
+        if self.opacity_percent == 0 {
+            0.08  // Ultra-transparent: réduit drastiquement (8% de l'alpha)
+        } else {
+            1.0   // Normal: pas de réduction supplémentaire
+        }
     }
 }
 
@@ -385,7 +401,9 @@ impl eframe::App for ZoneApp {
         }
 
         let opacity = self.config.opacity_factor();
-        let scale_alpha = |a: u8| -> u8 { ((a as f32) * opacity).round().clamp(0.0, 255.0) as u8 };
+        let zero_reduction = self.config.zero_opacity_reduction();
+        // Mise à l'échelle de l'alpha avec réduction spéciale si opacity = 0
+        let scale_alpha = |a: u8| -> u8 { ((a as f32) * opacity * zero_reduction).round().clamp(0.0, 255.0) as u8 };
         let radius = self.config.corner_radius;
 
         // Visuel global (thème sombre + coins arrondis) — appliqué à chaque frame pour suivre
@@ -394,7 +412,8 @@ impl eframe::App for ZoneApp {
             let mut v = egui::Visuals::dark();
             v.panel_fill = egui::Color32::TRANSPARENT;
             v.window_fill = egui::Color32::TRANSPARENT;
-            v.widgets.noninteractive.bg_fill = egui::Color32::from_rgba_unmultiplied(27, 27, 27, scale_alpha(255));
+            // Fond des widgets avec transparence maximale (très léger, presque invisible)
+            v.widgets.noninteractive.bg_fill = egui::Color32::from_rgba_unmultiplied(27, 27, 27, scale_alpha(10));
             v.window_rounding = egui::Rounding::same(radius);
             v.menu_rounding = egui::Rounding::same(radius.max(4.0) - 2.0);
             v.widgets.noninteractive.rounding = egui::Rounding::same(radius.max(3.0) - 3.0);
@@ -402,16 +421,18 @@ impl eframe::App for ZoneApp {
             v.widgets.hovered.rounding = egui::Rounding::same(radius.max(3.0) - 3.0);
             v.widgets.active.rounding = egui::Rounding::same(radius.max(3.0) - 3.0);
             v.widgets.open.rounding = egui::Rounding::same(radius.max(3.0) - 3.0);
+            // Sélection avec transparence modérée pour rester visible
             v.selection.bg_fill =
-                egui::Color32::from_rgba_unmultiplied(88, 120, 255, scale_alpha(255));
-            v.selection.stroke = egui::Stroke::new(1.0, egui::Color32::from_rgb(140, 165, 255));
-            v.faint_bg_color = egui::Color32::from_rgba_unmultiplied(24, 28, 38, scale_alpha(210));
-            v.extreme_bg_color = egui::Color32::from_rgba_unmultiplied(10, 12, 18, scale_alpha(200));
+                egui::Color32::from_rgba_unmultiplied(88, 120, 255, scale_alpha(40));
+            // Fonds faibles : extrêmement transparents pour l'effet vitre dépoli
+            v.faint_bg_color = egui::Color32::from_rgba_unmultiplied(24, 28, 38, scale_alpha(15));
+            v.extreme_bg_color = egui::Color32::from_rgba_unmultiplied(10, 12, 18, scale_alpha(10));
+            // Ombre de fenêtre très légère (presque imperceptible avec transparence)
             v.window_shadow = egui::Shadow {
                 offset: egui::vec2(0.0, 14.0),
                 blur: 40.0,
                 spread: 0.0,
-                color: egui::Color32::from_black_alpha(scale_alpha(110)),
+                color: egui::Color32::from_black_alpha(scale_alpha(10)),
             };
             v
         });
@@ -441,8 +462,6 @@ impl eframe::App for ZoneApp {
         if zoom_delta != 1.0 {
             self.icon_display_px = (self.icon_display_px * zoom_delta).clamp(32.0, 512.0);
         }
-
-        self.load_pending_icons(ctx);
 
         let zone_title = self.title_label();
         ctx.send_viewport_cmd(egui::ViewportCommand::Title(format!(
@@ -477,19 +496,19 @@ impl eframe::App for ZoneApp {
                     top_rgb[0],
                     top_rgb[1],
                     top_rgb[2],
-                    scale_alpha(190),
+                    scale_alpha(30),
                 );
                 let mid = egui::Color32::from_rgba_unmultiplied(
                     mid_rgb[0],
                     mid_rgb[1],
                     mid_rgb[2],
-                    scale_alpha(185),
+                    scale_alpha(25),
                 );
                 let bot = egui::Color32::from_rgba_unmultiplied(
                     bot_rgb[0],
                     bot_rgb[1],
                     bot_rgb[2],
-                    scale_alpha(175),
+                    scale_alpha(20),
                 );
 
                 // Trois bandes verticales pour simuler un dégradé (simple et stable).
@@ -518,7 +537,7 @@ impl eframe::App for ZoneApp {
                 egui::Frame::none()
                     .fill(frame_fill)
                     .rounding(egui::Rounding::same(radius))
-                    .stroke(egui::Stroke::new(1.0, egui::Color32::from_white_alpha(scale_alpha(40))))
+                    .stroke(egui::Stroke::new(1.0, egui::Color32::from_white_alpha(scale_alpha(5))))
                     .inner_margin(egui::Margin {
                         left: 12.0,
                         right: 0.0,
@@ -621,6 +640,8 @@ impl eframe::App for ZoneApp {
                 ui.separator();
                 ui.add_space(8.0);
 
+                self.load_pending_icons(ctx);
+
                 let icon = self.icon_display_px;
                 let cell_w = icon + 8.0;
 
@@ -712,7 +733,7 @@ impl eframe::App for ZoneApp {
                                                     img_rect,
                                                     4.0,
                                                     egui::Color32::from_rgba_unmultiplied(
-                                                        20, 22, 30, 255,
+                                                        20, 22, 30, 20,
                                                     ),
                                                 );
                                                 ui.allocate_new_ui(

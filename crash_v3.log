@@ -1,0 +1,117 @@
+   Compiling frence v0.1.0 (C:\Users\pc-rutra\Desktop\dev\rust\frence)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 6.22s
+     Running `target\debug\frence.exe`
+
+thread 'main' panicked at C:\Users\pc-rutra\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\wgpu-22.1.0\src\backend\wgpu_core.rs:2314:30:
+Error in Queue::submit: Validation Error
+
+Caused by:
+  Texture with 'egui_texid_Managed(78)' label has been destroyed
+
+stack backtrace:
+   0: std::panicking::begin_panic_handler
+             at /rustc/6b00bc3880198600130e1cf62b8f8a93494488cc/library\std\src\panicking.rs:697
+   1: core::panicking::panic_fmt
+             at /rustc/6b00bc3880198600130e1cf62b8f8a93494488cc/library\core\src\panicking.rs:75
+   2: wgpu::backend::wgpu_core::ContextWgpuCore::handle_error_fatal<enum2$<wgpu_core::device::queue::QueueSubmitError> >
+             at C:\Users\pc-rutra\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\wgpu-22.1.0\src\backend\wgpu_core.rs:317
+   3: wgpu::backend::wgpu_core::impl$7::queue_submit<core::iter::adapters::map::Map<ref_mut$<dyn$<core::iter::traits::iterator::Iterator<assoc$<Item,tuple$<wgpu::context::ObjectId,alloc::boxed::Box<dyn$<core::any::Any,core::marker::Send,core::marker::Sync>,alloc
+             at C:\Users\pc-rutra\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\wgpu-22.1.0\src\backend\wgpu_core.rs:2314
+   4: wgpu::context::impl$5::queue_submit<wgpu::backend::wgpu_core::ContextWgpuCore>
+             at C:\Users\pc-rutra\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\wgpu-22.1.0\src\context.rs:3061
+   5: wgpu::Queue::submit<core::iter::adapters::chain::Chain<alloc::vec::into_iter::IntoIter<wgpu::CommandBuffer,alloc::alloc::Global>,core::array::iter::IntoIter<wgpu::CommandBuffer,1> > >
+             at C:\Users\pc-rutra\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\wgpu-22.1.0\src\lib.rs:5537
+   6: egui_wgpu::winit::Painter::paint_and_update_textures
+             at C:\Users\pc-rutra\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\egui-wgpu-0.29.1\src\winit.rs:688
+   7: eframe::native::wgpu_integration::WgpuWinitRunning::run_ui_and_paint
+             at C:\Users\pc-rutra\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\eframe-0.29.1\src\native\wgpu_integration.rs:650
+   8: eframe::native::wgpu_integration::impl$1::run_ui_and_paint
+             at C:\Users\pc-rutra\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\eframe-0.29.1\src\native\wgpu_integration.rs:372
+   9: eframe::native::run::impl$1::window_event::closure$0<eframe::native::wgpu_integration::WgpuWinitApp>
+             at C:\Users\pc-rutra\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\eframe-0.29.1\src\native\run.rs:283
+  10: eframe::native::event_loop_context::with_event_loop_context<eframe::native::run::impl$1::window_event::closure_env$0<eframe::native::wgpu_integration::WgpuWinitApp> >
+             at C:\Users\pc-rutra\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\eframe-0.29.1\src\native\event_loop_context.rs:53
+  11: eframe::native::run::impl$1::window_event<eframe::native::wgpu_integration::WgpuWinitApp>
+             at C:\Users\pc-rutra\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\eframe-0.29.1\src\native\run.rs:280
+  12: winit::event_loop::dispatch_event_for_app
+             at C:\Users\pc-rutra\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\winit-0.30.13\src\event_loop.rs:642
+  13: winit::platform::run_on_demand::EventLoopExtRunOnDemand::run_app_on_demand::closure$0<winit::event_loop::EventLoop<enum2$<eframe::native::winit_integration::UserEvent> >,eframe::native::run::WinitAppWrapper<eframe::native::wgpu_integration::WgpuWinitApp> >
+             at C:\Users\pc-rutra\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\winit-0.30.13\src\platform\run_on_demand.rs:76
+  14: winit::platform_impl::windows::event_loop::impl$3::run_on_demand::closure$0<enum2$<eframe::native::winit_integration::UserEvent>,winit::platform::run_on_demand::EventLoopExtRunOnDemand::run_app_on_demand::closure_env$0<winit::event_loop::EventLoop<enum2$<e
+             at C:\Users\pc-rutra\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\winit-0.30.13\src\platform_impl\windows\event_loop.rs:264
+  15: alloc::boxed::impl$29::call_mut<tuple$<enum2$<winit::event::Event<winit::platform_impl::windows::event_loop::UserEventPlaceholder> > >,dyn$<core::ops::function::FnMut<tuple$<enum2$<winit::event::Event<winit::platform_impl::windows::event_loop::UserEventPla
+             at C:\Users\pc-rutra\.rustup\toolchains\stable-x86_64-pc-windows-msvc\lib\rustlib\src\rust\library\alloc\src\boxed.rs:1973
+  16: winit::platform_impl::windows::event_loop::runner::impl$3::call_event_handler::closure$0<winit::platform_impl::windows::event_loop::UserEventPlaceholder>
+             at C:\Users\pc-rutra\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\winit-0.30.13\src\platform_impl\windows\event_loop\runner.rs:236
+  17: core::panic::unwind_safe::impl$25::call_once<tuple$<>,winit::platform_impl::windows::event_loop::runner::impl$3::call_event_handler::closure_env$0<winit::platform_impl::windows::event_loop::UserEventPlaceholder> >
+             at C:\Users\pc-rutra\.rustup\toolchains\stable-x86_64-pc-windows-msvc\lib\rustlib\src\rust\library\core\src\panic\unwind_safe.rs:272
+  18: std::panicking::try::do_call<core::panic::unwind_safe::AssertUnwindSafe<winit::platform_impl::windows::event_loop::runner::impl$3::call_event_handler::closure_env$0<winit::platform_impl::windows::event_loop::UserEventPlaceholder> >,tuple$<> >
+             at C:\Users\pc-rutra\.rustup\toolchains\stable-x86_64-pc-windows-msvc\lib\rustlib\src\rust\library\std\src\panicking.rs:589
+  19: winit::window::impl$78::clone
+  20: std::panicking::try
+             at C:\Users\pc-rutra\.rustup\toolchains\stable-x86_64-pc-windows-msvc\lib\rustlib\src\rust\library\std\src\panicking.rs:552
+  21: std::panic::catch_unwind<core::panic::unwind_safe::AssertUnwindSafe<winit::platform_impl::windows::event_loop::runner::impl$3::call_event_handler::closure_env$0<winit::platform_impl::windows::event_loop::UserEventPlaceholder> >,tuple$<> >
+             at C:\Users\pc-rutra\.rustup\toolchains\stable-x86_64-pc-windows-msvc\lib\rustlib\src\rust\library\std\src\panic.rs:359
+  22: winit::platform_impl::windows::event_loop::runner::EventLoopRunner<winit::platform_impl::windows::event_loop::UserEventPlaceholder>::catch_unwind<winit::platform_impl::windows::event_loop::UserEventPlaceholder,tuple$<>,winit::platform_impl::windows::event_
+             at C:\Users\pc-rutra\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\winit-0.30.13\src\platform_impl\windows\event_loop\runner.rs:173
+  23: winit::platform_impl::windows::event_loop::runner::EventLoopRunner<winit::platform_impl::windows::event_loop::UserEventPlaceholder>::call_event_handler<winit::platform_impl::windows::event_loop::UserEventPlaceholder>
+             at C:\Users\pc-rutra\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\winit-0.30.13\src\platform_impl\windows\event_loop\runner.rs:230
+  24: winit::platform_impl::windows::event_loop::runner::EventLoopRunner<winit::platform_impl::windows::event_loop::UserEventPlaceholder>::send_event<winit::platform_impl::windows::event_loop::UserEventPlaceholder>
+             at C:\Users\pc-rutra\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\winit-0.30.13\src\platform_impl\windows\event_loop\runner.rs:210
+  25: winit::platform_impl::windows::event_loop::WindowData::send_event
+             at C:\Users\pc-rutra\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\winit-0.30.13\src\platform_impl\windows\event_loop.rs:129
+  26: winit::platform_impl::windows::event_loop::public_window_callback_inner::closure$4
+             at C:\Users\pc-rutra\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\winit-0.30.13\src\platform_impl\windows\event_loop.rs:1284
+  27: core::ops::function::FnOnce::call_once<winit::platform_impl::windows::event_loop::public_window_callback_inner::closure_env$4,tuple$<> >
+             at C:\Users\pc-rutra\.rustup\toolchains\stable-x86_64-pc-windows-msvc\lib\rustlib\src\rust\library\core\src\ops\function.rs:250
+  28: core::panic::unwind_safe::impl$25::call_once<tuple$<>,winit::platform_impl::windows::event_loop::public_window_callback_inner::closure_env$4>
+             at C:\Users\pc-rutra\.rustup\toolchains\stable-x86_64-pc-windows-msvc\lib\rustlib\src\rust\library\core\src\panic\unwind_safe.rs:272
+  29: std::panicking::try::do_call<core::panic::unwind_safe::AssertUnwindSafe<winit::platform_impl::windows::event_loop::public_window_callback_inner::closure_env$4>,tuple$<> >
+             at C:\Users\pc-rutra\.rustup\toolchains\stable-x86_64-pc-windows-msvc\lib\rustlib\src\rust\library\std\src\panicking.rs:589
+  30: winit::window::impl$78::clone
+  31: std::panicking::try
+             at C:\Users\pc-rutra\.rustup\toolchains\stable-x86_64-pc-windows-msvc\lib\rustlib\src\rust\library\std\src\panicking.rs:552
+  32: std::panic::catch_unwind<core::panic::unwind_safe::AssertUnwindSafe<winit::platform_impl::windows::event_loop::public_window_callback_inner::closure_env$4>,tuple$<> >
+             at C:\Users\pc-rutra\.rustup\toolchains\stable-x86_64-pc-windows-msvc\lib\rustlib\src\rust\library\std\src\panic.rs:359
+  33: winit::platform_impl::windows::event_loop::runner::EventLoopRunner<winit::platform_impl::windows::event_loop::UserEventPlaceholder>::catch_unwind<winit::platform_impl::windows::event_loop::UserEventPlaceholder,tuple$<>,winit::platform_impl::windows::event_
+             at C:\Users\pc-rutra\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\winit-0.30.13\src\platform_impl\windows\event_loop\runner.rs:173
+  34: winit::platform_impl::windows::event_loop::public_window_callback_inner
+             at C:\Users\pc-rutra\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\winit-0.30.13\src\platform_impl\windows\event_loop.rs:2464
+  35: winit::platform_impl::windows::event_loop::public_window_callback
+             at C:\Users\pc-rutra\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\winit-0.30.13\src\platform_impl\windows\event_loop.rs:1100
+  36: CallWindowProcW
+  37: SendMessageW
+  38: GetWindowDpiAwarenessContext
+  39: KiUserCallbackDispatcher
+  40: NtUserDispatchMessage
+  41: IsWindowUnicode
+  42: winit::platform_impl::windows::event_loop::EventLoop<enum2$<eframe::native::winit_integration::UserEvent> >::dispatch_peeked_messages<enum2$<eframe::native::winit_integration::UserEvent> >
+             at C:\Users\pc-rutra\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\winit-0.30.13\src\platform_impl\windows\event_loop.rs:419
+  43: winit::platform_impl::windows::event_loop::EventLoop<enum2$<eframe::native::winit_integration::UserEvent> >::run_on_demand<enum2$<eframe::native::winit_integration::UserEvent>,winit::platform::run_on_demand::EventLoopExtRunOnDemand::run_app_on_demand::clos
+             at C:\Users\pc-rutra\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\winit-0.30.13\src\platform_impl\windows\event_loop.rs:277
+  44: winit::platform::run_on_demand::impl$0::run_on_demand<enum2$<eframe::native::winit_integration::UserEvent>,winit::platform::run_on_demand::EventLoopExtRunOnDemand::run_app_on_demand::closure_env$0<winit::event_loop::EventLoop<enum2$<eframe::native::winit_i
+             at C:\Users\pc-rutra\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\winit-0.30.13\src\platform\run_on_demand.rs:89
+  45: winit::platform::run_on_demand::EventLoopExtRunOnDemand::run_app_on_demand<winit::event_loop::EventLoop<enum2$<eframe::native::winit_integration::UserEvent> >,eframe::native::run::WinitAppWrapper<eframe::native::wgpu_integration::WgpuWinitApp> >
+             at C:\Users\pc-rutra\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\winit-0.30.13\src\platform\run_on_demand.rs:75
+  46: eframe::native::run::run_and_return<eframe::native::wgpu_integration::WgpuWinitApp>
+             at C:\Users\pc-rutra\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\eframe-0.29.1\src\native\run.rs:300
+  47: eframe::native::run::run_wgpu::closure$0
+             at C:\Users\pc-rutra\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\eframe-0.29.1\src\native\run.rs:357
+  48: eframe::native::run::with_event_loop::closure$0<enum2$<core::result::Result<tuple$<>,enum2$<eframe::Error> > >,eframe::native::run::run_wgpu::closure_env$0>
+             at C:\Users\pc-rutra\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\eframe-0.29.1\src\native\run.rs:52
+  49: std::thread::local::LocalKey<core::cell::RefCell<enum2$<core::option::Option<winit::event_loop::EventLoop<enum2$<eframe::native::winit_integration::UserEvent> > > > > >::try_with<core::cell::RefCell<enum2$<core::option::Option<winit::event_loop::EventLoop<
+             at C:\Users\pc-rutra\.rustup\toolchains\stable-x86_64-pc-windows-msvc\lib\rustlib\src\rust\library\std\src\thread\local.rs:315
+  50: std::thread::local::LocalKey<core::cell::RefCell<enum2$<core::option::Option<winit::event_loop::EventLoop<enum2$<eframe::native::winit_integration::UserEvent> > > > > >::with<core::cell::RefCell<enum2$<core::option::Option<winit::event_loop::EventLoop<enum
+             at C:\Users\pc-rutra\.rustup\toolchains\stable-x86_64-pc-windows-msvc\lib\rustlib\src\rust\library\std\src\thread\local.rs:279
+  51: eframe::native::run::with_event_loop<enum2$<core::result::Result<tuple$<>,enum2$<eframe::Error> > >,eframe::native::run::run_wgpu::closure_env$0>
+             at C:\Users\pc-rutra\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\eframe-0.29.1\src\native\run.rs:42
+  52: eframe::native::run::run_wgpu
+             at C:\Users\pc-rutra\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\eframe-0.29.1\src\native\run.rs:355
+  53: eframe::run_native
+             at C:\Users\pc-rutra\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\eframe-0.29.1\src\lib.rs:265
+  54: frence::main
+             at .\src\main.rs:894
+  55: core::ops::function::FnOnce::call_once<enum2$<core::result::Result<tuple$<>,enum2$<eframe::Error> > > (*)(),tuple$<> >
+             at C:\Users\pc-rutra\.rustup\toolchains\stable-x86_64-pc-windows-msvc\lib\rustlib\src\rust\library\core\src\ops\function.rs:250
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+error: process didn't exit successfully: `target\debug\frence.exe` (exit code: 101)

@@ -260,7 +260,7 @@ pub fn extract_icon_file(path: &Path, size_px: i32) -> Option<ColorImage> {
 
 pub fn resolve_lnk_icon(path: &Path) -> Option<std::path::PathBuf> {
     unsafe {
-        let _ = CoInitialize(None);
+        let init_hr = CoInitialize(None);
         let mut result = None;
         if let Ok(sl) = CoCreateInstance::<_, IShellLinkW>(&ShellLink, None, CLSCTX_INPROC_SERVER) {
             if let Ok(pf) = sl.cast::<IPersistFile>() {
@@ -306,7 +306,9 @@ pub fn resolve_lnk_icon(path: &Path) -> Option<std::path::PathBuf> {
                 }
             }
         }
-        let _ = CoUninitialize();
+        if init_hr.is_ok() {
+            let _ = CoUninitialize();
+        }
         result
     }
 }

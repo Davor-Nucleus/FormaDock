@@ -1,5 +1,5 @@
 [package]
-name = "frence"
+name = "forma-dock"
 version = "0.1.0"
 edition = "2021"
 description = "Zones transparentes sur le bureau : nom du dossier et icônes de son contenu"

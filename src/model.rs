@@ -2,7 +2,7 @@ use eframe::egui;
 use std::path::{Path, PathBuf};
 
 /// Répertoire contenant l’exécutable (racine de déploiement).
-/// Sert principalement à trouver `frence.ini` ou les applications.
+/// Sert principalement à trouver `forma_dock.ini` ou les applications.
 pub fn exe_root_dir() -> PathBuf {
     std::env::current_exe()
         .ok()
@@ -41,8 +41,8 @@ pub struct IconResponse {
     pub generation: u32,
 }
 
-/// Configuration globale du lanceur "frence".
-/// Regroupe le thème de la fenêtre, la taille, et les marges définies pas l'utilisateur dans `frence.ini`.
+/// Configuration globale du lanceur "Forma Dock".
+/// Regroupe le thème de la fenêtre, la taille, et les marges définies pas l'utilisateur dans `forma_dock.ini`.
 #[derive(Clone)]
 pub struct AppConfig {
     pub window_width: f32,
@@ -111,7 +111,7 @@ impl AppConfig {
         None
     }
 
-    /// Extrait et charge le fichier `frence.ini` situé à côté de l'exécutable.
+    /// Extrait et charge le fichier `forma_dock.ini` situé à côté de l'exécutable.
     /// Retourne la configuration par défaut en cas d'absence.
     pub fn load() -> Self {
         let default = Self {
@@ -131,7 +131,7 @@ impl AppConfig {
 
         let mut out = default.clone();
 
-        let cfg_path = exe_root_dir().join("frence.ini");
+        let cfg_path = exe_root_dir().join("forma_dock.ini");
         let Ok(text) = std::fs::read_to_string(&cfg_path) else {
             return out;
         };

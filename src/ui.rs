@@ -82,7 +82,7 @@ pub fn update_view(app: &mut ZoneApp, ctx: &egui::Context) {
     // 4. Interface Haut-Niveau
     let zone_title = app.title_label();
     ctx.send_viewport_cmd(egui::ViewportCommand::Title(format!(
-        "{zone_title} — frence"
+        "{zone_title} — Forma Dock"
     )));
 
     // Dessin du fond d'écran acrylique à dégradé vertical

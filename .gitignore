@@ -1,1 +1,35 @@
+# === Rust ===
 /target
+**/*.rs.bk
+Cargo.lock
+
+# === Crash logs ===
+crash*.log
+direct_crash.txt
+
+# === IDE / Éditeurs ===
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# === Fichiers système Windows ===
+Thumbs.db
+desktop.ini
+$RECYCLE.BIN/
+
+# === Fichiers de configuration locale (à personnaliser par l'utilisateur) ===
+# Ne pas inclure le .ini dans le dépôt pour que chacun crée le sien
+# (ou le retirer du suivi avec git rm --cached config.ini)
+# config.ini
+# forma_dock.ini
+
+# === Build & Release ===
+*.exe
+*.pdb
+*.rlib
+*.dll
+*.lib
+*.exp

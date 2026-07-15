@@ -1,6 +1,6 @@
 <div align="center">
 
-  # 🚀 Forma Dock
+  # Forma Dock
 
   **Un utilitaire de bureau moderne pour Windows, organisez vos icônes, raccourcis et dossiers dans des zones transparentes et personnalisables, ancrées sur votre fond d'écran.**
 

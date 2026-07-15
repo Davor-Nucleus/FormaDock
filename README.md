@@ -2,7 +2,7 @@
 
   # 🚀 Forma Dock
 
-  **Un utilitaire de bureau moderne pour Windows — organisez vos icônes, raccourcis et dossiers dans des zones transparentes et personnalisables, ancrées sur votre fond d'écran.**
+  **Un utilitaire de bureau moderne pour Windows, organisez vos icônes, raccourcis et dossiers dans des zones transparentes et personnalisables, ancrées sur votre fond d'écran.**
 
   [![Langage principal](https://img.shields.io/badge/Rust-000000?style=for-the-badge&logo=rust&logoColor=white)](#)
   [![Framework](https://img.shields.io/badge/egui-eframe-8B5CF6?style=for-the-badge)](#)

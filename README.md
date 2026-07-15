@@ -12,7 +12,7 @@ Forma Dock a été conçu pour résoudre le problème des bureaux Windows encomb
 - ✅ **Zones de bureau ancrées** — S'attache directement au fond d'écran sans interférer avec vos tâches.
 - ✅ **Extraction native d'icônes** — Récupération haute-fidélité des icônes Windows via les API Shell pour `.ico`, `.lnk`, et raccourcis web.
 - ✅ **Vraie transparence** — Paramétrage fin de l'opacité et de la couleur de l'interface en gardant les éléments visuels nets.
-- ✅ **Configuration facile** — Un simple fichier `forma_dock.ini` permet d'ajuster les tailles, les coins et l'apparence à la volée.
+- ✅ **Configuration facile** — Un simple fichier `config.ini` permet d'ajuster les tailles, les coins et l'apparence à la volée.
 
 ---
 ## 🛠️ Prérequis
@@ -33,7 +33,7 @@ cd forma-dock
 # Construire/Compiler l'application
 cargo build --release
 
-# Configurer l'application (le fichier par défaut forma_dock.ini est déjà présent)
+# Configurer l'application (le fichier par défaut config.ini est déjà présent)
 ```
 
 ---
@@ -52,7 +52,7 @@ Une fois lancée, l'application se fixe sur l'écran et s'exécute en arrière-p
 ---
 ## ⚙️ Configuration
 
-Modifiez ou créez le fichier `forma_dock.ini` à la racine de l'application pour personnaliser votre espace :
+Modifiez ou créez le fichier `config.ini` à la racine de l'application pour personnaliser votre espace :
 
 | Variable            | Description                               | Valeur par défaut                         |
 | ------------------- | ----------------------------------------- | ----------------------------------------- |
@@ -74,7 +74,7 @@ forma-dock/
 │   ├── ui.rs           # Rendu visuel de l'interface avec egui
 │   ├── win_icon.rs     # Extraction Windows Shell des icônes en multithread
 │   └── main.rs         # Point d'entrée, création Tray Icon et fenêtre eframe
-├── forma_dock.ini      # Fichier de configuration utilisateur
+├── config.ini      # Fichier de configuration utilisateur
 ├── Cargo.toml          # Dépendances (eframe, tray-icon, windows, etc.)
 └── README.md
 ```

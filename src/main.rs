@@ -139,7 +139,7 @@ impl AppConfig {
 
         let mut out = default.clone();
 
-        let cfg_path = exe_root_dir().join("forma_dock.ini");
+        let cfg_path = exe_root_dir().join("config.ini");
         let Ok(text) = std::fs::read_to_string(&cfg_path) else {
             return out;
         };
@@ -391,7 +391,7 @@ impl eframe::App for ZoneApp {
                 // Application de la position de la fenêtre via commande au premier rendu
                 // (contourne les bugs fréquents de fenêtres sans bordures sous winit/Windows)
                 let scale = ctx.pixels_per_point();
-                // Si l'utilisateur pense en pixels physiques (comme stipulé dans forma_dock.ini),
+                // Si l'utilisateur pense en pixels physiques (comme stipulé dans config.ini),
                 // on les convertit en points logiques pour egui.
                 ctx.send_viewport_cmd(egui::ViewportCommand::OuterPosition(egui::pos2(
                     x / scale,
